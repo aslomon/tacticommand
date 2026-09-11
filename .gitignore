@@ -1,0 +1,16 @@
+.build/
+build/
+.DS_Store
+*.xcodeproj/
+DerivedData/
+xcuserdata/
+.swiftpm/
+*.xcuserstate
+.env
+.env.*
+*.p12
+*.cer
+*.mobileprovision
+*.dmg
+*.pkg
+*.zip

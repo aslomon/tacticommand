@@ -1,0 +1,42 @@
+name: Bug report
+description: Report reproducible TactiCommand behavior
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach your configuration, session files, terminal history,
+        project paths, device serial number, or unredacted screenshots.
+  - type: input
+    id: version
+    attributes:
+      label: TactiCommand version
+      placeholder: 0.2.5 (9)
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Device, firmware, and transport
+      placeholder: Creator Micro 2, firmware 0.4.1, Bluetooth
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true

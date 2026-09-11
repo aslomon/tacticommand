@@ -1,0 +1,4 @@
+101 1 S /opt/homebrew/bin/opencode
+202 1 S /System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal
+303 202 R /usr/local/bin/aider
+invalid process row

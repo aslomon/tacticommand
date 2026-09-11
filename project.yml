@@ -1,0 +1,54 @@
+name: CreatorMicroControl
+
+options:
+  minimumXcodeGenVersion: 2.46.0
+  deploymentTarget:
+    macOS: "14.0"
+
+settings:
+  base:
+    CLANG_ENABLE_MODULES: YES
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_VERSION: "6.0"
+
+targets:
+  CreatorMicroCore:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Sources/CreatorMicroCore
+    settings:
+      base:
+        CODE_SIGNING_ALLOWED: NO
+        DEFINES_MODULE: YES
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.creatormicro.control.core
+        SKIP_INSTALL: YES
+
+  CreatorMicroControl:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/CreatorMicroControl
+      - path: Resources/CreatorMicroControl.icns
+        buildPhase: resources
+    dependencies:
+      - target: CreatorMicroCore
+        embed: true
+    settings:
+      base:
+        CODE_SIGNING_ALLOWED: NO
+        INFOPLIST_FILE: Resources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.creatormicro.control
+        PRODUCT_NAME: CreatorMicroControl
+
+schemes:
+  CreatorMicroControl:
+    build:
+      targets:
+        CreatorMicroControl: all
+    run:
+      config: Debug
+    archive:
+      config: Release

@@ -1,0 +1,7 @@
+p101
+fcwd
+n/Users/example/.codex/sessions/session.jsonl
+f7
+n/Users/example/.claude/projects/session.jsonl
+nlocalhost:4500
+n
