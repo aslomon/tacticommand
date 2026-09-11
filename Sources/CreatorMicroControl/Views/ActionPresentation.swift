@@ -268,6 +268,10 @@ enum ActionKind: String, CaseIterable, Identifiable {
 extension CreatorAction {
     var actionTitle: String {
         if case .shortOrLongPress = self { return "Short / Long Press" }
+        if case .keyboardShortcut(let shortcut) = self {
+            return shortcut.displayName ?? KeyShortcutDisplayFormatter().string(for: shortcut)
+        }
+        if case .slashCommand(let command, _) = self { return command }
         return ActionKind(action: self).title
     }
 

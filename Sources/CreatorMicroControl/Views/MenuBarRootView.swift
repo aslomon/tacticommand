@@ -22,6 +22,10 @@ struct MenuBarRootView: View {
         }
         .padding(16)
         .frame(width: DesignTokens.popoverWidth)
+        .background(
+            Color(nsColor: .windowBackgroundColor)
+                .opacity(MenuBarPopoverPresentationPolicy.surfaceOpacity)
+        )
         .onAppear {
             model.refreshSystemAccess()
         }
@@ -105,7 +109,7 @@ struct MenuBarRootView: View {
                 .foregroundStyle(.secondary)
             Picker("Active software layer", selection: activeLayerSelection) {
                 ForEach(model.configuration.layers) { layer in
-                    Text("\(layer.id.rawValue + 1) · \(layer.name)").tag(layer.id)
+                    Text("\(layer.id.displayPosition) · \(layer.name)").tag(layer.id)
                 }
             }
             .labelsHidden()
@@ -119,35 +123,15 @@ struct MenuBarRootView: View {
     }
 
     private var footer: some View {
-        VStack(spacing: 10) {
-            Toggle("Launch at Login", isOn: launchAtLoginBinding)
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .disabled(!model.isReady)
-            HStack {
-                SettingsLink {
-                    Text("Configure Pad")
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(DesignTokens.signal)
-                Spacer()
-                Button(ApplicationQuitCommand.title) {
-                    NSApplication.shared.terminate(nil)
-                }
-                .buttonStyle(.borderless)
-                .keyboardShortcut(
-                    KeyEquivalent(ApplicationQuitCommand.keyEquivalent),
-                    modifiers: .command
-                )
+        HStack {
+            SettingsLink {
+                Text("Configure Pad")
             }
+            .buttonStyle(.borderedProminent)
+            .tint(DesignTokens.signal)
+            Spacer()
+            PopoverQuitButton()
         }
-    }
-
-    private var launchAtLoginBinding: Binding<Bool> {
-        Binding(
-            get: { model.launchAtLoginEnabled },
-            set: { enabled in model.setLaunchAtLogin(enabled) }
-        )
     }
 
     private var providerSelection: Binding<DictationProviderID> {
@@ -233,11 +217,18 @@ private struct StatusChip: View {
     let color: Color
 
     var body: some View {
-        Label(text, systemImage: symbol)
-            .font(.caption)
-            .foregroundStyle(color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(color.opacity(0.1), in: Capsule())
+        HStack(spacing: 4) {
+            Image(systemName: symbol)
+                .foregroundStyle(color)
+            Text(text)
+                .foregroundStyle(
+                    MenuBarPopoverPresentationPolicy.usesPrimaryStatusText
+                        ? Color.primary : color
+                )
+        }
+        .font(.caption.weight(.medium))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(Color.primary.opacity(0.08), in: Capsule())
     }
 }

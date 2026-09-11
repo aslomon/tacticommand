@@ -60,7 +60,10 @@ struct MicroKey: View {
         if let liveState { return color(for: liveState.tone).opacity(0.58) }
         if isSelected { return DesignTokens.signal }
         if let index = control.agentIndex,
-            model.activeLayer == .agents,
+            MicroKeyPresentationPolicy.showsAgentSession(
+                for: control,
+                activeLayer: model.activeLayer
+            ),
             model.agentSnapshot.slots.indices.contains(index)
         {
             let light = model.agentSnapshot.slots[index].deviceLight
@@ -104,12 +107,24 @@ struct MicroKey: View {
 
     private var keyLabel: String {
         if let index = control.agentIndex,
-            model.activeLayer == .agents,
+            MicroKeyPresentationPolicy.showsAgentSession(
+                for: control,
+                activeLayer: model.activeLayer
+            ),
             model.agentSnapshot.slots.indices.contains(index),
             let session = model.agentSnapshot.slots[index].session
         {
             return session.title.uppercased()
         }
         return action.actionTitle.uppercased()
+    }
+}
+
+enum MicroKeyPresentationPolicy {
+    static func showsAgentSession(
+        for control: ControlID,
+        activeLayer: LayerIndex
+    ) -> Bool {
+        control.agentIndex != nil && activeLayer == .agentFocus
     }
 }

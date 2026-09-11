@@ -24,7 +24,7 @@ struct ConfigurationWindowView: View {
             Divider()
             HStack(spacing: 0) {
                 LayerRailView(model: model)
-                    .frame(width: 168)
+                    .frame(width: 196)
                 Divider()
                 PadCanvasView(model: model)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -74,6 +74,7 @@ private struct ConfigurationHeader: View {
                     .font(.caption)
                     .foregroundStyle(DesignTokens.signal)
             }
+            LaunchAtLoginSettingsToggle(model: model)
             Button(action: showDevices) {
                 Label("Devices", systemImage: "dot.radiowaves.left.and.right")
             }

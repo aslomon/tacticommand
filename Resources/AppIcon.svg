@@ -9,24 +9,9 @@
   <rect x="72" y="72" width="880" height="880" rx="210" fill="url(#face)"
         stroke="#ffffff" stroke-opacity="0.14" stroke-width="6"/>
   <g fill="#f7f4eb">
-    <circle cx="260" cy="270" r="84"/>
-    <circle cx="430" cy="270" r="48"/>
-    <circle cx="594" cy="270" r="48"/>
-    <circle cx="764" cy="270" r="84"/>
-
-    <circle cx="260" cy="430" r="56"/>
-    <circle cx="430" cy="430" r="56"/>
-    <circle cx="594" cy="430" r="56"/>
-    <circle cx="764" cy="430" r="56"/>
-
-    <circle cx="260" cy="594" r="56"/>
-    <circle cx="430" cy="594" r="56"/>
-    <circle cx="594" cy="594" r="56"/>
-    <circle cx="764" cy="594" r="56"/>
-
-    <circle cx="260" cy="754" r="48"/>
-    <circle cx="430" cy="754" r="48"/>
-    <circle cx="594" cy="754" r="48"/>
-    <circle cx="764" cy="754" r="48"/>
+    <circle cx="350" cy="350" r="108"/>
+    <circle cx="674" cy="350" r="108"/>
+    <circle cx="350" cy="674" r="108"/>
+    <circle cx="674" cy="674" r="108"/>
   </g>
 </svg>

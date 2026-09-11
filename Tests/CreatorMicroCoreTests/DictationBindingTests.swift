@@ -108,7 +108,8 @@ final class DictationBindingTests: XCTestCase {
                 KeyShortcutKey(key: "j", virtualKeyCode: 38),
                 KeyShortcutKey(key: "k", virtualKeyCode: 40),
             ],
-            modifiers: [.command]
+            modifiers: [.command],
+            displayName: "Open Command Palette"
         )
         let encoded = try JSONEncoder().encode(shortcut)
 
@@ -119,6 +120,30 @@ final class DictationBindingTests: XCTestCase {
             try JSONDecoder().decode(KeyShortcut.self, from: legacy),
             KeyShortcut(key: "d", modifiers: [.control], virtualKeyCode: 2)
         )
+    }
+
+    func testShortcutDisplayNameIsOptionalAndNormalized() {
+        XCTAssertEqual(
+            KeyShortcut(key: "k", displayName: "  Open Command Palette  ").displayName,
+            "Open Command Palette"
+        )
+        XCTAssertNil(KeyShortcut(key: "k", displayName: "   ").displayName)
+        XCTAssertNil(KeyShortcut(key: "k").displayName)
+    }
+
+    func testRenamingShortcutPreservesItsRecordedChord() {
+        let original = KeyShortcut(
+            key: "k",
+            modifiers: [.command, .shift],
+            virtualKeyCode: 40
+        )
+
+        let renamed = original.renamed(to: "Open Agent Window")
+
+        XCTAssertEqual(renamed.displayName, "Open Agent Window")
+        XCTAssertEqual(renamed.mainKeys, original.mainKeys)
+        XCTAssertEqual(renamed.modifiers, original.modifiers)
+        XCTAssertEqual(renamed.virtualKeyCode, original.virtualKeyCode)
     }
 
     func testModifierOnlyShortcutRoundTripsWithoutInventingAMainKey() throws {

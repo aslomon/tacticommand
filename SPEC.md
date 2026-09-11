@@ -10,13 +10,13 @@ depending on the rede application.
 
 1. Detect the pad over USB and Bluetooth LE and reconnect without relaunching.
 2. Route every physical key, dial event, and joystick movement through a
-   configurable six-layer binding model.
+   configurable ten-layer binding model.
 3. Offer exactly three first-class dictation providers: rede, ChatGPT/Codex,
    and Apple Dictation. Show newly installed applications in a custom provider
    picker and retain provider-specific hold or toggle behavior.
 4. Support the two microphone switches as either one deduplicated wide key or
    two independent bindings. Default the left switch to dictation and the right
-   switch to approval.
+   switch to input-mute toggle so its live red/green state remains visible.
 5. Provide actions for Return, Escape, backward Delete, terminal, Finder,
    application/window switching, text snippets, volume, output mute, input mute,
    pointer movement, clicks, scrolling, AppleScript, shell commands, and agent
@@ -73,15 +73,26 @@ depending on the rede application.
 24. Provide a user-recorded keyboard shortcut, Paste as Plain Text, safe 2–6-step
     action sequences, and automatic focus of the next agent needing attention.
     Agent attention priority is waiting, then error, then complete.
+25. Ship ten active software layers in this order: Desktop, Claude Code CLI,
+    Claude App, Codex CLI, Codex App, Cursor, Meetings, Agent Focus, Window
+    Management, and Snippets. Applying an editable workflow preset to a slot
+    must reuse the current Desktop chassis and require an explicit user action.
+    Browser and Writing remain available as optional swap-in presets.
+26. Render the menu-bar popover on an opaque native surface on first open,
+    activate it for immediate interaction, and keep all status labels readable.
 
 ## Default layers
 
-1. Codex
-2. Desktop
-3. Agents
-4. Windows
-5. Meetings
-6. Snippets
+1. Desktop
+2. Claude Code CLI
+3. Claude App
+4. Codex CLI
+5. Codex App
+6. Cursor
+7. Meetings
+8. Agent Focus
+9. Window Management
+10. Snippets
 
 ## Dictation routing
 
@@ -106,9 +117,9 @@ depending on the rede application.
   emit one logical action.
 - The meaning of the read-only `device.status.layer_index` value is not validated
   against the installed firmware. Preserve it as a raw diagnostic only; it must
-  never select or confirm one of the six app-owned software layers.
+    never select or confirm one of the app-owned software layers.
 - The haptic control beside the three white indicators selects one of three
-  Bluetooth host profiles and is not a bindable six-layer control.
+  Bluetooth host profiles and is not a bindable software-layer control.
 - Keys report distinct down/up events, so short/long press routing is supported;
   encoder rotation reports momentary pulses and cannot use long press.
 
@@ -160,7 +171,7 @@ depending on the rede application.
   frontmost app never changes a manual selection.
 - A short press fires only its primary action; crossing the long-press threshold
   fires only the configured hold action and releases it correctly.
-- Default Desktop and Windows mappings do not consume keys for secondary or
+- Default Desktop and workflow mappings do not consume keys for secondary or
   middle click; primary click is immediately available beside the joystick.
 - Mid-travel joystick input moves more slowly than the previous quadratic curve
   while full deflection retains the configured maximum speed.
@@ -183,6 +194,17 @@ depending on the rede application.
   input mute, volume down/up, and output mute. Migration recognizes the exact
   legacy Codex default and never infers audio bindings in a customized layer.
 - No unavailable agent or provider is shown as healthy.
+- Exact untouched version-five workflow layers migrate to the recommended
+  presets while Desktop, customized layers, app rules, and preferences remain
+  unchanged. A preset can replace any one slot without changing another.
+- Layer names are editable, trimmed, persisted immediately, and remain within
+  the existing configuration-validation limit. Renaming starts only after an
+  explicit user action; opening Settings never focuses the layer-name editor.
+- Claude Code CLI displays only its configured CLI actions. Agent-session titles
+  and colors are restricted to Agent Focus, and assigned slash-command keys show
+  their exact command text.
+- The menu-bar popover is opaque and keyboard-ready on its first presentation;
+  its device, layer, and provider chips use primary text plus semantic icons.
 - `swift build`, `swift test`, app-bundle verification, and code review pass.
 - Final hardware acceptance verifies USB, Bluetooth, the raw internal layer
   diagnostic, every input, six RGB keys, ChatGPT coexistence, and reconnect

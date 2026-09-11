@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <rect width="1280" height="640" fill="#17191d"/>
+  <rect x="36" y="36" width="1208" height="568" rx="42" fill="#1f2227"
+        stroke="#ffffff" stroke-opacity="0.10" stroke-width="2"/>
+  <rect x="104" y="140" width="360" height="360" rx="88" fill="#111214"
+        stroke="#ffffff" stroke-opacity="0.16" stroke-width="3"/>
+  <g fill="#f7f4eb">
+    <circle cx="216" cy="252" r="48"/>
+    <circle cx="352" cy="252" r="48"/>
+    <circle cx="216" cy="388" r="48"/>
+    <circle cx="352" cy="388" r="48"/>
+  </g>
+  <rect x="540" y="166" width="74" height="6" rx="3" fill="#24c8db"/>
+  <text x="540" y="264" fill="#f7f4eb" font-family="-apple-system, BlinkMacSystemFont, sans-serif"
+        font-size="74" font-weight="700">TactiCommand</text>
+  <text x="540" y="332" fill="#c7cbd2" font-family="-apple-system, BlinkMacSystemFont, sans-serif"
+        font-size="30" font-weight="500">A local-first command surface</text>
+  <text x="540" y="374" fill="#c7cbd2" font-family="-apple-system, BlinkMacSystemFont, sans-serif"
+        font-size="30" font-weight="500">for your micro controller.</text>
+  <text x="540" y="458" fill="#8f96a1" font-family="-apple-system, BlinkMacSystemFont, sans-serif"
+        font-size="22">macOS · SwiftUI · Creator Micro 2 · Codex Micro · MIT</text>
+  <text x="540" y="500" fill="#69717d" font-family="-apple-system, BlinkMacSystemFont, sans-serif"
+        font-size="17">Independent community project · No telemetry</text>
+</svg>

@@ -114,7 +114,7 @@ final class AppModel {
 
     var selectedLayer: LayerConfiguration {
         configuration.layer(activeLayer)
-            ?? LayerConfiguration(id: activeLayer, name: "Layer \(activeLayer.rawValue + 1)")
+            ?? LayerConfiguration(id: activeLayer, name: "Layer \(activeLayer.displayPosition)")
     }
 
     var activeLayer: LayerIndex { layerSelection.active }
@@ -207,11 +207,11 @@ final class AppModel {
     private func presentLayerChange(source: LayerSelectionSource) {
         let activeName =
             configuration.layer(activeLayer)?.name
-            ?? "Layer \(activeLayer.rawValue + 1)"
+            ?? "Layer \(activeLayer.displayPosition)"
         let nextLayer = LayerCommand.next.destination(from: activeLayer)
         let nextName =
             configuration.layer(nextLayer)?.name
-            ?? "Layer \(nextLayer.rawValue + 1)"
+            ?? "Layer \(nextLayer.displayPosition)"
         layerChangePresenter?.show(
             LayerChangeHUDPresentation(
                 activeLayerName: activeName,

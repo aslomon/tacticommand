@@ -2,31 +2,58 @@ import AppIntents
 import CreatorMicroCore
 
 enum CreatorMicroLayerIntentValue: String, AppEnum {
-    case codex
     case desktop
     case agents
     case windows
     case meetings
     case snippets
+    case cursor
+    case meetingControls
+    case codex
+    case claudeCodeCLI
+    case claudeApp
+    case codexCLI
+    case codexApp
+    case agentFocus
+    case windowManagement
+    case snippetCommands
 
-    static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Creator Micro Layer")
+    static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "TactiCommand Layer")
     static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [
-        .codex: "Codex",
         .desktop: "Desktop",
-        .agents: "Agents",
-        .windows: "Windows",
-        .meetings: "Meetings",
-        .snippets: "Snippets",
+        .agents: "Agent Focus (Legacy)",
+        .windows: "Window Management (Legacy)",
+        .meetings: "Meetings (Legacy)",
+        .snippets: "Snippets (Legacy)",
+        .cursor: "Cursor",
+        .meetingControls: "Meetings",
+        .codex: "Codex CLI (Legacy)",
+        .claudeCodeCLI: "Claude Code CLI",
+        .claudeApp: "Claude App",
+        .codexCLI: "Codex CLI",
+        .codexApp: "Codex App",
+        .agentFocus: "Agent Focus",
+        .windowManagement: "Window Management",
+        .snippetCommands: "Snippets",
     ]
 
     var layer: LayerIndex {
         switch self {
-        case .codex: .codex
         case .desktop: .desktop
-        case .agents: .agents
-        case .windows: .windows
-        case .meetings: .meetings
-        case .snippets: .snippets
+        case .agents: .agentFocus
+        case .windows: .windowManagement
+        case .meetings: .meetingControls
+        case .snippets: .snippetCommands
+        case .cursor: .cursor
+        case .meetingControls: .meetingControls
+        case .codex: .codexCLI
+        case .claudeCodeCLI: .claudeCodeCLI
+        case .claudeApp: .claudeApp
+        case .codexCLI: .codexCLI
+        case .codexApp: .codexApp
+        case .agentFocus: .agentFocus
+        case .windowManagement: .windowManagement
+        case .snippetCommands: .snippetCommands
         }
     }
 }

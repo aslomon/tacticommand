@@ -121,7 +121,7 @@ public struct LayerJoystickConfiguration: Codable, Equatable, Sendable {
 }
 
 public struct MicroConfiguration: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 5
+    public static let currentSchemaVersion = 8
 
     public var schemaVersion: Int
     public var microphoneLayout: MicrophoneLayout
@@ -165,6 +165,21 @@ public struct MicroConfiguration: Codable, Equatable, Sendable {
     ) {
         guard let index = layers.firstIndex(where: { $0.id == layerID }) else { return }
         layers[index].joystick = joystick
+    }
+
+    public mutating func applyPreset(
+        _ presetID: MicroLayerPresetID,
+        to layerID: LayerIndex
+    ) {
+        guard let desktopChassis = layer(.desktop),
+            let index = layers.firstIndex(where: { $0.id == layerID })
+        else {
+            return
+        }
+        layers[index] = MicroLayerPresetCatalog.preset(for: presetID).layer(
+            for: layerID,
+            desktopChassis: desktopChassis
+        )
     }
 
     public func resolvedJoystick(

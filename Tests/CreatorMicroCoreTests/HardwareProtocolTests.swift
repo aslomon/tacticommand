@@ -70,10 +70,15 @@ final class MicroReportFramingTests: XCTestCase {
 }
 
 final class SoftwareLayerIndexTests: XCTestCase {
-    func testLayerIndexAcceptsExactlySixSoftwareLayers() {
-        XCTAssertEqual((0..<6).compactMap(LayerIndex.init(rawValue:)).count, 6)
+    func testLayerIndexAcceptsTenSoftwareLayersWithoutChangingFirmwareLimit() {
+        XCTAssertEqual((0..<10).compactMap(LayerIndex.init(rawValue:)).count, 10)
         XCTAssertNil(LayerIndex(rawValue: -1))
-        XCTAssertNil(LayerIndex(rawValue: 6))
+        XCTAssertNil(LayerIndex(rawValue: 10))
+        XCTAssertEqual(MicroProtocolConstants.layerCount, 6)
+        XCTAssertEqual(LayerIndex.cursor.rawValue, 6)
+        XCTAssertEqual(LayerIndex.meetingControls.rawValue, 7)
+        XCTAssertEqual(LayerIndex.windowManagement.rawValue, 8)
+        XCTAssertEqual(LayerIndex.snippetCommands.rawValue, 9)
     }
 }
 

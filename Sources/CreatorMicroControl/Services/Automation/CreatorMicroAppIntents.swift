@@ -18,7 +18,8 @@ struct CreatorMicroStatusIntent: AppIntent {
     ) -> IntentDialog {
         switch result {
         case .success(.status(let status)):
-            return "Creator Micro is on layer \(status.activeLayer.rawValue + 1) and is \(status.connection.rawValue)."
+            return
+                "TactiCommand is on layer \(status.activeLayer.displayPosition) and is \(status.connection.rawValue)."
         case .success:
             return "Creator Micro returned an unexpected status response."
         case .failure(let failure):

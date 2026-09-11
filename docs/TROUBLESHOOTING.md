@@ -27,7 +27,7 @@ include firmware and transport in a redacted bug report.
 
 ## The wrong layer is active
 
-Next and Previous operate on the six software layers. The three hardware host
+Next and Previous operate on the configured software layers. The three hardware host
 indicators are Bluetooth profiles, not layers. A frontmost-app rule can
 temporarily override the manual layer and restores it when the app is left.
 

@@ -74,7 +74,18 @@ Use the 4 pt base scale: `4, 8, 12, 16, 24, 32`.
 - **Pad canvas:** proportionally accurate key, dial, stick, and touch layout.
 - **Inspector:** action type first, then only fields relevant to that action.
 - **Provider picker:** built-ins first, detected providers next, custom app last.
-- **Layer rail:** six numbered segments with editable names and AppSense scope.
+- **Layer rail:** ten numbered segments in workflow order with editable names
+  and AppSense scope. The rail scrolls independently at the minimum window size
+  so presets, status, and host guidance remain reachable.
+- **Layer naming:** the selected name is read-only until the user activates its
+  pencil control. Settings must never open with a text field focused, because
+  hardware-triggered text and slash commands belong to the previously focused
+  work app rather than the configuration editor.
+- **Workflow presets:** the rail exposes a compact preset menu for the selected
+  slot. Presets copy the user's Desktop chassis before applying only their
+  environment-specific controls. Applying one is explicit, never automatic.
+  Ten active slots are available at once; additional presets can replace any
+  slot after confirmation.
 - **Layer switching:** the rail pairs the current layer with a short explanation
   of manual key actions and automatic app rules. The menu bar popover exposes a
   direct software-layer picker, names the default physical cycle key, and names
@@ -83,17 +94,23 @@ Use the 4 pt base scale: `4, 8, 12, 16, 24, 32`.
   as a layer. A raw firmware `layer_index` may appear as a neutral diagnostic,
   but never as a confirmed or selectable software layer.
 - **Layer change HUD:** every actual software-layer change presents one compact,
-  non-activating capsule near the top center of the active screen. The primary
-  line names the active layer; a smaller secondary line names the layer selected
-  by Next. It dismisses automatically, never steals focus, and cross-fades when
-  Reduce Motion is enabled.
+  non-activating, opaque capsule near the top center of the active screen. A
+  four-dot mark anchors the left edge. `ACTIVE LAYER`, the active name, the
+  selection source, and a monospaced `NEXT` line establish the hierarchy. It
+  dismisses automatically, never steals focus, and cross-fades when Reduce
+  Motion is enabled.
 - **Text and clipboard actions:** Copy and Paste are separate action choices.
   Paste as Plain Text is visually distinct. Type Text accepts any fixed input.
   Slash Command uses a monospaced command field, explains its Codex/Claude
-  purpose, and offers an explicit Submit with Return toggle.
+  purpose, offers an explicit Submit with Return toggle, and displays the exact
+  command on its assigned hardware key.
 - **Shortcut and sequence actions:** custom shortcuts reuse the safe physical
-  recorder. Action sequences show a numbered 2–6-step list, allow only safe
+  recorder. An optional 128-byte plain-text name appears on the assigned key;
+  unnamed shortcuts show their formatted chord. Action sequences show a numbered 2–6-step list, allow only safe
   built-in actions, and never hide scripts inside a generic macro label.
+- **Application controls:** Launch at Login belongs in the configuration header,
+  not the status popover. The popover footer ends with a compact power-labelled
+  Quit control that retains `Command-Q` and a complete VoiceOver label.
 - **Dual action:** eligible physical keys show `Short press` first and an optional
   `Long press` disclosure beneath it. The secondary action never hides the
   primary action or relies on color alone.
@@ -145,7 +162,8 @@ Use the 4 pt base scale: `4, 8, 12, 16, 24, 32`.
 - **Physical key state:** only Agent keys can receive individual RGB colors.
   When an Agent key owns a stateful action on the active layer, that action state
   takes priority over its agent-session color. Action keys remain limited to the
-  firmware's shared backlight zone.
+  firmware's shared backlight zone. Agent-session titles and colors appear only
+  while the dedicated Agent Focus layer is active.
 - **Device management:** a dedicated sheet lists only HID devices that match the
   supported hardware identity and are currently available to the app. It names
   the observed product and transport. Pairing and nearby discovery link to
@@ -160,13 +178,15 @@ Use the 4 pt base scale: `4, 8, 12, 16, 24, 32`.
 - Menu bar symbol is a custom-feeling composition of `circle.grid.2x2.fill`
   and a small signal dot, rendered as a template image.
 - Use SF Symbols throughout the UI; no emoji or illustrated stock assets.
-- The Dock and in-app logo abstract the Creator Micro 2 from its top view: a
-  graphite macOS squircle and a four-column field made only from warm-white
-  circles. The larger upper corner circles echo the joystick and dial. Keep the
-  mark quiet, monochrome, spacious, and legible at 16 px. The status item remains
-  the native `circle.grid.2x2.fill` template symbol for menu-bar clarity.
+- The Dock and in-app logo reduce the Creator Micro control surface to four
+  warm-white circles on a graphite macOS squircle. It deliberately shares the
+  geometry of the native `circle.grid.2x2.fill` status item while retaining a
+  quiet app-icon surface. Keep it monochrome, spacious, and legible at 16 px.
 - UI copy and code documentation are English.
 - The app remains local-first: no account, telemetry, or cloud sync.
+- Repository share artwork uses a 2:1 graphite canvas, the four-dot mark, one
+  cyan signal line, the product name, and the canonical tagline. It must remain
+  readable in compact social cards and must state no third-party affiliation.
 
 ## Signature detail
 
@@ -175,7 +195,7 @@ key, while its semantic status appears as a narrow light bar. This is both the
 primary configuration affordance and the hardware diagnostic, not decoration.
 
 The three narrow hardware indicators always visualize the reported Bluetooth
-host profile. They never infer a six-layer value with modulo arithmetic. The
+  host profile. They never infer a software-layer value with modulo arithmetic. The
 ambient zone is green when ready, cyan while dictation is active, and breathing
 red while microphone input is muted. Agent keys retain their independent status
 colors on top of that global signal.

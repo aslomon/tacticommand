@@ -54,6 +54,12 @@ public actor ConfigurationStore {
             let configuration = try MicroConfigurationMigrator.migrate(decoded)
             try MicroConfigurationValidator.validate(configuration)
             if configuration != decoded {
+                if case .failure(let error) = preserveMigrationBackup(
+                    data,
+                    schemaVersion: decoded.schemaVersion
+                ) {
+                    return .failure(error)
+                }
                 if case .failure(let error) = saveValidated(configuration) {
                     return .failure(error)
                 }
@@ -80,6 +86,27 @@ public actor ConfigurationStore {
         latestGeneration = generation
         latestGenerationResult = saveValidated(configuration)
         return latestGenerationResult
+    }
+
+    private func preserveMigrationBackup(
+        _ data: Data,
+        schemaVersion: Int
+    ) -> Result<Void, ConfigurationStoreError> {
+        let backupURL = fileURL.deletingPathExtension()
+            .appendingPathExtension("v\(schemaVersion).backup.json")
+        guard !FileManager.default.fileExists(atPath: backupURL.path) else {
+            return .success(())
+        }
+        do {
+            try data.write(to: backupURL, options: .atomic)
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o600],
+                ofItemAtPath: backupURL.path
+            )
+            return .success(())
+        } catch {
+            return .failure(.write("A pre-migration backup could not be saved."))
+        }
     }
 
     private func saveValidated(

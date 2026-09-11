@@ -6,6 +6,40 @@ public enum LocalAutomationProtocol {
     public static let maximumIdentifierBytes = 128
 }
 
+enum LocalAutomationLayerWireID {
+    static func layer(for value: Int) -> LayerIndex? {
+        switch value {
+        case 0: .codexCLI
+        case 1: .desktop
+        case 2: .agentFocus
+        case 3: .windowManagement
+        case 4: .meetingControls
+        case 5: .snippetCommands
+        case 6: .claudeCodeCLI
+        case 7: .claudeApp
+        case 8: .codexApp
+        case 9: .cursor
+        default: nil
+        }
+    }
+
+    static func value(for layer: LayerIndex) -> Int {
+        switch layer {
+        case .codexCLI: 0
+        case .desktop: 1
+        case .agentFocus: 2
+        case .windowManagement: 3
+        case .meetingControls: 4
+        case .snippetCommands: 5
+        case .claudeCodeCLI: 6
+        case .claudeApp: 7
+        case .codexApp: 8
+        case .cursor: 9
+        default: layer.rawValue
+        }
+    }
+}
+
 public enum LocalAutomationCommand: Equatable, Sendable {
     case status
     case listLayers
@@ -50,6 +84,45 @@ public struct LocalAutomationStatus: Codable, Equatable, Sendable {
         self.device = device
         self.layerSource = layerSource
     }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let wireID = try container.decode(Int.self, forKey: .activeLayer)
+        guard let activeLayer = LocalAutomationLayerWireID.layer(for: wireID) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .activeLayer,
+                in: container,
+                debugDescription: "Unknown automation layer identifier."
+            )
+        }
+        self.init(
+            activeLayer: activeLayer,
+            isReady: try container.decode(Bool.self, forKey: .isReady),
+            connection: try container.decode(LocalAutomationConnection.self, forKey: .connection),
+            device: try container.decodeIfPresent(DeviceStatus.self, forKey: .device),
+            layerSource: try container.decodeIfPresent(
+                LayerSelectionSource.self,
+                forKey: .layerSource
+            )
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(LocalAutomationLayerWireID.value(for: activeLayer), forKey: .activeLayer)
+        try container.encode(isReady, forKey: .isReady)
+        try container.encode(connection, forKey: .connection)
+        try container.encodeIfPresent(device, forKey: .device)
+        try container.encodeIfPresent(layerSource, forKey: .layerSource)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case activeLayer
+        case isReady
+        case connection
+        case device
+        case layerSource
+    }
 }
 
 public struct LocalAutomationLayer: Codable, Equatable, Sendable {
@@ -59,6 +132,30 @@ public struct LocalAutomationLayer: Codable, Equatable, Sendable {
     public init(index: LayerIndex, name: String) {
         self.index = index
         self.name = name
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let wireID = try container.decode(Int.self, forKey: .index)
+        guard let index = LocalAutomationLayerWireID.layer(for: wireID) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .index,
+                in: container,
+                debugDescription: "Unknown automation layer identifier."
+            )
+        }
+        self.init(index: index, name: try container.decode(String.self, forKey: .name))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(LocalAutomationLayerWireID.value(for: index), forKey: .index)
+        try container.encode(name, forKey: .name)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case index
+        case name
     }
 }
 
@@ -107,116 +204,34 @@ public struct LocalAutomationTriggerReceipt: Codable, Equatable, Sendable {
         self.layer = layer
         self.action = action
     }
-}
 
-public enum LocalAutomationResult: Codable, Equatable, Sendable {
-    case status(LocalAutomationStatus)
-    case layers([LocalAutomationLayer])
-    case layerSelected(LayerIndex)
-    case bindingTriggered(LocalAutomationTriggerReceipt)
-
-    private enum CodingKeys: String, CodingKey {
-        case kind
-        case status
-        case layers
-        case activeLayer
-        case binding
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let wireID = try container.decode(Int.self, forKey: .layer)
+        guard let layer = LocalAutomationLayerWireID.layer(for: wireID) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .layer,
+                in: container,
+                debugDescription: "Unknown automation layer identifier."
+            )
+        }
+        self.init(
+            control: try container.decode(ControlID.self, forKey: .control),
+            layer: layer,
+            action: try container.decode(LocalAutomationActionKind.self, forKey: .action)
+        )
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        switch self {
-        case .status(let status):
-            try container.encode("status", forKey: .kind)
-            try container.encode(status, forKey: .status)
-        case .layers(let layers):
-            try container.encode("layers", forKey: .kind)
-            try container.encode(layers, forKey: .layers)
-        case .layerSelected(let layer):
-            try container.encode("layerSelected", forKey: .kind)
-            try container.encode(layer, forKey: .activeLayer)
-        case .bindingTriggered(let binding):
-            try container.encode("bindingTriggered", forKey: .kind)
-            try container.encode(binding, forKey: .binding)
-        }
+        try container.encode(control, forKey: .control)
+        try container.encode(LocalAutomationLayerWireID.value(for: layer), forKey: .layer)
+        try container.encode(action, forKey: .action)
     }
 
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let kind = try container.decode(String.self, forKey: .kind)
-        switch kind {
-        case "status":
-            self = .status(try container.decode(LocalAutomationStatus.self, forKey: .status))
-        case "layers":
-            self = .layers(try container.decode([LocalAutomationLayer].self, forKey: .layers))
-        case "layerSelected":
-            self = .layerSelected(try container.decode(LayerIndex.self, forKey: .activeLayer))
-        case "bindingTriggered":
-            self = .bindingTriggered(
-                try container.decode(LocalAutomationTriggerReceipt.self, forKey: .binding)
-            )
-        default:
-            throw DecodingError.dataCorruptedError(
-                forKey: .kind,
-                in: container,
-                debugDescription: "Unknown local automation result kind."
-            )
-        }
-    }
-}
-
-public enum LocalAutomationErrorCode: String, Codable, Equatable, Sendable {
-    case invalidRequest = "invalid_request"
-    case invalidParameters = "invalid_parameters"
-    case unsupportedVersion = "unsupported_version"
-    case methodNotFound = "method_not_found"
-    case frameTooLarge = "frame_too_large"
-    case forbiddenAction = "forbidden_action"
-    case bindingNotFound = "binding_not_found"
-    case executionFailed = "execution_failed"
-    case internalError = "internal_error"
-}
-
-public struct LocalAutomationError: Codable, Error, Equatable, Sendable {
-    public let code: LocalAutomationErrorCode
-    public let message: String
-    public let actionKind: LocalAutomationActionKind?
-
-    public init(
-        code: LocalAutomationErrorCode,
-        message: String,
-        actionKind: LocalAutomationActionKind? = nil
-    ) {
-        self.code = code
-        self.message = message
-        self.actionKind = actionKind
-    }
-}
-
-public struct LocalAutomationProtocolFailure: Error, Equatable, Sendable {
-    public let requestID: String?
-    public let error: LocalAutomationError
-
-    public init(requestID: String?, error: LocalAutomationError) {
-        self.requestID = requestID
-        self.error = error
-    }
-}
-
-public struct LocalAutomationResponse: Codable, Equatable, Sendable {
-    public let version: Int
-    public let id: String?
-    public let result: LocalAutomationResult?
-    public let error: LocalAutomationError?
-
-    public static func success(
-        id: String,
-        result: LocalAutomationResult
-    ) -> Self {
-        Self(version: LocalAutomationProtocol.currentVersion, id: id, result: result, error: nil)
-    }
-
-    public static func failure(id: String?, error: LocalAutomationError) -> Self {
-        Self(version: LocalAutomationProtocol.currentVersion, id: id, result: nil, error: error)
+    private enum CodingKeys: String, CodingKey {
+        case control
+        case layer
+        case action
     }
 }

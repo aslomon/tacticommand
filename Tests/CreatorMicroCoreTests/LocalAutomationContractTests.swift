@@ -14,7 +14,7 @@ final class LocalAutomationContractTests: XCTestCase {
         )
         XCTAssertEqual(
             try decode(#"{"version":1,"id":"three","method":"setLayer","params":{"layer":4}}"#).command,
-            .setLayer(.meetings)
+            .setLayer(.meetingControls)
         )
         XCTAssertEqual(
             try decode(
@@ -111,6 +111,32 @@ final class LocalAutomationContractTests: XCTestCase {
         XCTAssertEqual(params["layer"] as? Int, 1)
     }
 
+    func testVersionOneLayerIdentifiersPreserveLegacySemanticsAndExtendSafely() throws {
+        let expectedLayers: [LayerIndex] = [
+            .codexCLI,
+            .desktop,
+            .agentFocus,
+            .windowManagement,
+            .meetingControls,
+            .snippetCommands,
+            .claudeCodeCLI,
+            .claudeApp,
+            .codexApp,
+            .cursor,
+        ]
+        for (wireID, expectedLayer) in expectedLayers.enumerated() {
+            let request = try decode(
+                #"{"version":1,"id":"layer","method":"setLayer","params":{"layer":\#(wireID)}}"#
+            )
+            XCTAssertEqual(request.command, .setLayer(expectedLayer))
+            let encoded = try object(
+                codec.encode(LocalAutomationRequest(id: "layer", command: .setLayer(expectedLayer)))
+            )
+            let params = try XCTUnwrap(encoded["params"] as? [String: Any])
+            XCTAssertEqual(params["layer"] as? Int, wireID)
+        }
+    }
+
     func testDecodesItsOwnSuccessAndFailureResponses() throws {
         let success = LocalAutomationResponse.success(
             id: "status",
@@ -129,6 +155,24 @@ final class LocalAutomationContractTests: XCTestCase {
 
         XCTAssertEqual(try codec.decodeResponse(codec.encode(success)).get(), success)
         XCTAssertEqual(try codec.decodeResponse(codec.encode(failure)).get(), failure)
+    }
+
+    func testResponseLayerIdentifiersUseTheSameStableSemanticMapping() throws {
+        let response = LocalAutomationResponse.success(
+            id: "layers",
+            result: .layers([
+                LocalAutomationLayer(index: .agentFocus, name: "Agent Focus"),
+                LocalAutomationLayer(index: .claudeCodeCLI, name: "Claude Code CLI"),
+                LocalAutomationLayer(index: .cursor, name: "Cursor"),
+            ])
+        )
+
+        let payload = try object(codec.encode(response))
+        let result = try XCTUnwrap(payload["result"] as? [String: Any])
+        let layers = try XCTUnwrap(result["layers"] as? [[String: Any]])
+
+        XCTAssertEqual(layers.compactMap { $0["index"] as? Int }, [2, 6, 9])
+        XCTAssertEqual(try codec.decodeResponse(codec.encode(response)).get(), response)
     }
 
     private func decode(_ json: String) throws -> LocalAutomationRequest {

@@ -28,6 +28,7 @@ public struct KeyShortcut: Codable, Hashable, Sendable {
     public let modifiers: [KeyboardModifier]
     public let pressCount: Int
     public let interTapIntervalMilliseconds: Int
+    public let displayName: String?
 
     public var key: String { mainKeys.first?.key ?? "" }
     public var virtualKeyCode: UInt16? { mainKeys.first?.virtualKeyCode }
@@ -38,13 +39,15 @@ public struct KeyShortcut: Codable, Hashable, Sendable {
         modifiers: [KeyboardModifier] = [],
         pressCount: Int = 1,
         interTapIntervalMilliseconds: Int = 120,
-        virtualKeyCode: UInt16? = nil
+        virtualKeyCode: UInt16? = nil,
+        displayName: String? = nil
     ) {
         self.init(
             mainKeys: [KeyShortcutKey(key: key, virtualKeyCode: virtualKeyCode)],
             modifiers: modifiers,
             pressCount: pressCount,
-            interTapIntervalMilliseconds: interTapIntervalMilliseconds
+            interTapIntervalMilliseconds: interTapIntervalMilliseconds,
+            displayName: displayName
         )
     }
 
@@ -52,7 +55,8 @@ public struct KeyShortcut: Codable, Hashable, Sendable {
         mainKeys: [KeyShortcutKey],
         modifiers: [KeyboardModifier] = [],
         pressCount: Int = 1,
-        interTapIntervalMilliseconds: Int = 120
+        interTapIntervalMilliseconds: Int = 120,
+        displayName: String? = nil
     ) {
         self.mainKeys = Self.distinct(mainKeys)
         var requestedModifiers = Set(modifiers)
@@ -67,6 +71,7 @@ public struct KeyShortcut: Codable, Hashable, Sendable {
             max(interTapIntervalMilliseconds, 30),
             1_000
         )
+        self.displayName = Self.normalizedDisplayName(displayName)
     }
 
     public init(from decoder: Decoder) throws {
@@ -82,12 +87,14 @@ public struct KeyShortcut: Codable, Hashable, Sendable {
                 Int.self,
                 forKey: .interTapIntervalMilliseconds
             ) ?? 120
+        let displayName = try container.decodeIfPresent(String.self, forKey: .displayName)
         if let mainKeys = try container.decodeIfPresent([KeyShortcutKey].self, forKey: .mainKeys) {
             self.init(
                 mainKeys: mainKeys,
                 modifiers: modifiers,
                 pressCount: pressCount,
-                interTapIntervalMilliseconds: interval
+                interTapIntervalMilliseconds: interval,
+                displayName: displayName
             )
             return
         }
@@ -96,7 +103,8 @@ public struct KeyShortcut: Codable, Hashable, Sendable {
             modifiers: modifiers,
             pressCount: pressCount,
             interTapIntervalMilliseconds: interval,
-            virtualKeyCode: try container.decodeIfPresent(UInt16.self, forKey: .virtualKeyCode)
+            virtualKeyCode: try container.decodeIfPresent(UInt16.self, forKey: .virtualKeyCode),
+            displayName: displayName
         )
     }
 
@@ -108,6 +116,17 @@ public struct KeyShortcut: Codable, Hashable, Sendable {
         try container.encode(pressCount, forKey: .pressCount)
         try container.encode(interTapIntervalMilliseconds, forKey: .interTapIntervalMilliseconds)
         try container.encodeIfPresent(virtualKeyCode, forKey: .virtualKeyCode)
+        try container.encodeIfPresent(displayName, forKey: .displayName)
+    }
+
+    public func renamed(to displayName: String?) -> KeyShortcut {
+        KeyShortcut(
+            mainKeys: mainKeys,
+            modifiers: modifiers,
+            pressCount: pressCount,
+            interTapIntervalMilliseconds: interTapIntervalMilliseconds,
+            displayName: displayName
+        )
     }
 
     private static func distinct(_ keys: [KeyShortcutKey]) -> [KeyShortcutKey] {
@@ -128,6 +147,11 @@ public struct KeyShortcut: Codable, Hashable, Sendable {
         return left.key == right.key
     }
 
+    private static func normalizedDisplayName(_ displayName: String?) -> String? {
+        let trimmed = displayName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     private enum CodingKeys: String, CodingKey {
         case mainKeys
         case key
@@ -135,5 +159,6 @@ public struct KeyShortcut: Codable, Hashable, Sendable {
         case pressCount
         case interTapIntervalMilliseconds
         case virtualKeyCode
+        case displayName
     }
 }

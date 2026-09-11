@@ -176,6 +176,43 @@ final class AppModelConfigurationLifecycleTests: XCTestCase {
         XCTAssertEqual(DictationActionEditor.binding(in: action)?.shortcut, shortcut)
     }
 
+    func testApplyingWorkflowPresetReplacesOnlySelectedSlotAndPersists() async throws {
+        let store = temporaryStore()
+        let model = AppModel(configurationStore: store)
+        let originalDesktop = try XCTUnwrap(model.configuration.layer(.desktop))
+
+        model.applyPreset(.cursor, to: .agents)
+        await model.flushConfiguration()
+
+        let stored = try await store.load().get()
+        XCTAssertEqual(stored.layer(.desktop), originalDesktop)
+        XCTAssertEqual(stored.layer(.agents)?.name, "Cursor")
+        XCTAssertEqual(
+            stored.layer(.agents)?.action(for: .agent0),
+            .keyboardShortcut(KeyShortcut(key: "i", modifiers: [.command], displayName: "Agent"))
+        )
+    }
+
+    func testRenamingLayerTrimsInputAndPersists() async throws {
+        let store = temporaryStore()
+        let model = AppModel(configurationStore: store)
+
+        model.renameLayer("  Terminal Flow  ", layer: .codex)
+        await model.flushConfiguration()
+
+        let stored = try await store.load().get()
+        XCTAssertEqual(stored.layer(.codex)?.name, "Terminal Flow")
+    }
+
+    func testRenamingLayerRejectsAnEmptyName() {
+        let model = AppModel(configurationStore: temporaryStore())
+        let originalName = model.configuration.layer(.desktop)?.name
+
+        model.renameLayer("   ", layer: .desktop)
+
+        XCTAssertEqual(model.configuration.layer(.desktop)?.name, originalName)
+    }
+
     private func temporaryStore() -> ConfigurationStore {
         ConfigurationStore(fileURL: temporaryConfigurationURL())
     }

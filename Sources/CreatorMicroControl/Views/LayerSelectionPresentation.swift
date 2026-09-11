@@ -2,7 +2,7 @@ import CreatorMicroCore
 
 struct LayerSelectionPresentation: Equatable {
     static let physicalControlExplanation =
-        "The round haptic control switches Bluetooth host 1–3. Its three white LEDs show that host; it does not change these six software layers and cannot be assigned."
+        "The round haptic control switches Bluetooth host 1–3. Its three white LEDs show that host; it does not change the software layer and cannot be assigned."
 
     let layerName: String
     let sourceLabel: String

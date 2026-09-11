@@ -7,22 +7,28 @@
 <p align="center"><strong>A local-first command surface for your micro controller.</strong></p>
 
 <p align="center">
+  <a href="https://github.com/aslomon/tacticommand/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/aslomon/tacticommand/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-24C8DB.svg"></a>
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-17191D.svg">
   <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138.svg">
   <img alt="local first" src="https://img.shields.io/badge/local--first-no%20telemetry-30D158.svg">
 </p>
 
-TactiCommand turns a Codex Micro / Creator Micro 2 controller into a deeply
-configurable macOS command surface. It combines six software layers, voice and
-dictation triggers, keyboard automation, audio controls, pointer control, and
-live agent status in one native SwiftUI app.
+TactiCommand is an open-source native macOS menu bar app that turns a Work
+Louder Creator Micro 2 or Codex Micro into a deeply configurable command
+surface. It combines ten software layers, voice and dictation triggers,
+keyboard automation, audio controls, pointer control, and live coding-agent
+status in one SwiftUI app.
 
 No account. No cloud service. No telemetry. No network listener.
 
+Built for hands-on workflows across Claude Code CLI, the Claude app, Codex CLI,
+the Codex app, Cursor, meetings, and everyday macOS control.
+
 > TactiCommand is an unofficial, independent companion app. It is not
-> affiliated with or endorsed by Work Louder or OpenAI. Creator Micro, Codex,
-> and ChatGPT are trademarks of their respective owners.
+> affiliated with or endorsed by Work Louder, OpenAI, Anthropic, or Cursor.
+> Creator Micro, Codex, ChatGPT, Claude, and Cursor are trademarks of their
+> respective owners.
 
 ## Why it exists
 
@@ -33,7 +39,7 @@ on screen and, where the hardware allows it, through RGB feedback.
 
 ## Highlights
 
-- Six configurable layers with Next, Previous, direct selection, and temporary
+- Ten configurable layers with Next, Previous, direct selection, and temporary
   frontmost-app rules.
 - A short, non-activating HUD that confirms the active and next layer.
 - Copy, Paste, Paste as Plain Text, reusable Slash Commands, text snippets, and
@@ -48,6 +54,15 @@ on screen and, where the hardware allows it, through RGB feedback.
 - Connected-device inventory, USB/Bluetooth reconnect, and a direct path to the
   macOS Bluetooth pairing surface.
 - App Intents plus a versioned, same-user Unix-domain RPC interface.
+
+## See it in action
+
+| Configuration editor | Menu bar control |
+| --- | --- |
+| ![Claude Code CLI layer with named shortcuts and commands](docs/assets/screenshots/configuration-editor.png) | ![Opaque TactiCommand menu bar popover](docs/assets/screenshots/menu-bar-popover.png) |
+
+The Claude Code CLI preset displays its real key assignments directly. Live
+agent-session names and colors appear only in the separate Agent Focus layer.
 
 ## Hardware compatibility
 
@@ -109,15 +124,41 @@ microphone permission and speech processing.
 
 ## Layers in plain language
 
-The default order is Codex, Desktop, Agents, Windows, Meetings, and Snippets.
+The default order is Desktop, Claude Code CLI, Claude App, Codex CLI, Codex App,
+Cursor, Meetings, Agent Focus, Window Management, and Snippets.
 
-- **Next Layer** advances once and wraps from Snippets back to Codex.
-- **Previous Layer** moves backward and wraps from Codex to Snippets.
+- **Next Layer** advances once and wraps from Snippets back to Desktop.
+- **Previous Layer** moves backward and wraps from Desktop to Snippets.
 - **Select Layer…** always jumps directly to one chosen layer.
 
 Every real layer change briefly shows the active layer and what Next would
 choose. The controller's three Bluetooth host indicators are separate firmware
-state and are never presented as one of the six software layers.
+state and are never presented as one of the software layers.
+
+The layer rail lets you explicitly rename any slot or replace it with a workflow
+preset. Presets reuse the current Desktop chassis — terminal, Finder, quick
+command, layer switch, dictation, Return, dial, and joystick — then replace the
+six round-key actions for the selected environment. The confirmation step keeps
+an existing custom mapping from being overwritten accidentally.
+
+| Preset | Round-key focus |
+| --- | --- |
+| Desktop | Mute, click, Escape, app switch, Copy/Paste, Delete |
+| Claude Code CLI | Cancel, permission mode, transcript, `/status`, `/context`, `/tasks` |
+| Claude App | New chat, command palette, Copy, Paste, Find, Escape |
+| Codex CLI | `/status`, `/diff`, `/review`, `/project`, `/worktree`, `/compact` |
+| Codex App | New chat, command palette, terminal, `/project`, `/worktree`, `/side` |
+| Cursor | Agent, new chat, Copy, Paste, submit, cancel generation |
+| Meetings | Microphone mute and output mute |
+| Agent Focus | Direct focus for six configured agent sessions |
+| Browser | Address bar, tabs, reload, and Find |
+| Window Management | Application and window switching |
+| Writing | Copy, Paste, plain-text paste, select, undo, redo |
+| Snippets | Six reusable prompt snippets |
+
+Slash Commands type into whichever composer currently has keyboard focus.
+Terminal and editor shortcuts may be customized by those apps, so every preset
+remains fully editable.
 
 ## Text and command actions
 
@@ -126,9 +167,12 @@ state and are never presented as one of the six software layers.
 - **Paste as Plain Text** sends `Option-Shift-Command-V`.
 - **Type Text** inserts a fixed snippet in the focused field.
 - **Slash Command** inserts a reusable command such as `/review` or `/compact`
-  and can optionally submit it with Return.
+  and can optionally submit it with Return. Its exact command is shown on the
+  assigned key.
 - **Keyboard Shortcut** records the exact physical chord, including `fn`,
-  localized keys, modifier-only shortcuts, and ordered multi-key chords.
+  localized keys, modifier-only shortcuts, and ordered multi-key chords. Give
+  it an optional name such as `Permission Mode`; that name appears directly on
+  the assigned key, while unnamed shortcuts show their concrete chord.
 - **Action Sequence** runs 2–6 safe built-in steps in order. Scripts,
   dictation, layer changes, agent focus, and nested sequences are excluded.
 

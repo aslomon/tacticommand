@@ -76,6 +76,27 @@ extension AppModel {
         saveConfiguration()
     }
 
+    func applyPreset(
+        _ preset: MicroLayerPresetID,
+        to layer: LayerIndex? = nil
+    ) {
+        guard canMutateConfiguration else { return }
+        configuration.applyPreset(preset, to: layer ?? activeLayer)
+        saveConfiguration()
+    }
+
+    func renameLayer(_ proposedName: String, layer: LayerIndex? = nil) {
+        guard canMutateConfiguration else { return }
+        let name = proposedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name.utf8.count <= 128 else { return }
+        let target = layer ?? activeLayer
+        guard let index = configuration.layers.firstIndex(where: { $0.id == target }) else {
+            return
+        }
+        configuration.layers[index].name = name
+        saveConfiguration()
+    }
+
     func refreshProviders() async {
         switch await providerRegistry.providers() {
         case .success(let discovered):

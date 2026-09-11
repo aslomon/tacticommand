@@ -62,6 +62,27 @@ final class ActionPresentationTests: XCTestCase {
         )
     }
 
+    func testNamedKeyboardShortcutUsesItsNameAsTheActionLabel() {
+        let action = CreatorAction.keyboardShortcut(
+            KeyShortcut(
+                key: "k",
+                modifiers: [.command, .shift],
+                displayName: "Open Agent Window"
+            )
+        )
+
+        XCTAssertEqual(action.actionTitle, "Open Agent Window")
+        XCTAssertEqual(ActionKind(action: action).title, "Keyboard Shortcut")
+    }
+
+    func testUnnamedKeyboardShortcutUsesTheFormattedChordAsTheActionLabel() {
+        let action = CreatorAction.keyboardShortcut(
+            KeyShortcut(key: "k", modifiers: [.command, .shift])
+        )
+
+        XCTAssertEqual(action.actionTitle, "shift + cmd + K")
+    }
+
     func testSlashCommandSelectionKeepsItsExistingConfiguration() {
         let current = CreatorAction.slashCommand(command: "/review", submit: true)
 
@@ -69,6 +90,17 @@ final class ActionPresentationTests: XCTestCase {
         XCTAssertEqual(
             ActionKind.slashCommand.makeAction(current: .none),
             .slashCommand(command: "/", submit: false)
+        )
+    }
+
+    func testSlashCommandUsesItsCommandAsTheKeyLabel() {
+        XCTAssertEqual(
+            CreatorAction.slashCommand(command: "/status", submit: true).actionTitle,
+            "/status"
+        )
+        XCTAssertEqual(
+            CreatorAction.slashCommand(command: "/", submit: false).actionTitle,
+            "/"
         )
     }
 

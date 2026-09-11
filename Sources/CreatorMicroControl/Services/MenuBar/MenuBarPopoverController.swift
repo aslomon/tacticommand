@@ -39,6 +39,8 @@ final class MenuBarPopoverController: NSObject {
     private func configurePopover(model: AppModel) {
         let rootView = MenuBarRootView(model: model)
         let hostingController = NSHostingController(rootView: rootView)
+        hostingController.view.wantsLayer = true
+        hostingController.view.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
         hostingController.sizingOptions = [.preferredContentSize]
         hostingController.preferredContentSize = NSSize(
             width: DesignTokens.popoverWidth,
@@ -55,10 +57,23 @@ final class MenuBarPopoverController: NSObject {
             popover.performClose(nil)
             return
         }
+        if MenuBarPopoverPresentationPolicy.activatesApplicationOnOpen {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        }
         popover.show(
             relativeTo: button.bounds,
             of: button,
             preferredEdge: .minY
         )
+        configurePresentedWindow()
+    }
+
+    private func configurePresentedWindow() {
+        guard let window = popover.contentViewController?.view.window else { return }
+        if MenuBarPopoverPresentationPolicy.makesWindowOpaque {
+            window.backgroundColor = .windowBackgroundColor
+            window.isOpaque = true
+        }
+        window.makeKey()
     }
 }

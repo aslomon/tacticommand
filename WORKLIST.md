@@ -20,6 +20,15 @@ This is the ordered implementation record for the current improvement pass.
    and previously known Creator Micro devices. Offer Connect only where the
    macOS device API provides a real connection operation; otherwise link to the
    correct Bluetooth system surface and explain the boundary.
+8. [x] Add ten active software layers for Desktop, Claude Code CLI, Claude App,
+   Codex CLI, Codex App, Cursor, Meetings, Agent Focus, Window Management, and
+   Snippets, plus optional Browser and Writing presets, without replacing a
+   customized Desktop mapping.
+9. [x] Add explicit preset replacement, editable layer names, and a wider rail.
+10. [x] Align the layer HUD and app icon around the minimal four-dot brand mark.
+11. [x] Make the menu-bar popover opaque, readable, and active on first open.
+12. [x] Add natural repository search positioning, a social preview, and
+    channel-specific launch copy.
 
 ## Additional actions
 
@@ -27,6 +36,12 @@ This is the ordered implementation record for the current improvement pass.
 2. [x] Paste as Plain Text without reading clipboard contents.
 3. [x] Safe Action Sequence composed only of existing non-script actions.
 4. [x] Focus Next Agent Needing Attention, prioritizing waiting then error states.
+5. [x] Optional custom shortcut names shown directly on assigned keys.
+6. [x] Launch at Login in Settings and a compact accessible popover power action.
+7. [x] Restrict live agent-session labels to Agent Focus and show exact slash
+   commands on Claude Code CLI keys.
+8. [x] Make layer renaming explicit so command injection never lands in a
+   focused name field when Settings opens.
 
 ## Completion contract
 

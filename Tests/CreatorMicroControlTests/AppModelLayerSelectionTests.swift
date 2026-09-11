@@ -38,8 +38,8 @@ final class AppModelLayerSelectionTests: XCTestCase {
             presenter.presentations,
             [
                 LayerChangeHUDPresentation(
-                    activeLayerName: "Agents",
-                    nextLayerName: "Windows",
+                    activeLayerName: "Claude Code CLI",
+                    nextLayerName: "Claude App",
                     source: .physicalKey
                 )
             ]

@@ -25,8 +25,8 @@ public enum MicroConfigurationValidator {
     }
 
     private static func validateLayers(_ layers: [LayerConfiguration]) throws {
-        guard layers.count == MicroProtocolConstants.layerCount else {
-            throw failure("The configuration must contain exactly six layers.")
+        guard layers.count == LayerIndex.softwareLayerCount else {
+            throw failure("The configuration must contain exactly ten layers.")
         }
         let identifiers = Set(layers.map(\.id))
         guard identifiers.count == layers.count else {
@@ -55,8 +55,8 @@ public enum MicroConfigurationValidator {
     private static func validateApplicationRules(
         _ rules: [ApplicationLayerRule]
     ) throws {
-        guard rules.count <= MicroProtocolConstants.layerCount else {
-            throw failure("At most six application layer rules are supported.")
+        guard rules.count <= LayerIndex.softwareLayerCount else {
+            throw failure("At most ten application layer rules are supported.")
         }
         guard Set(rules.map(\.bundleIdentifier)).count == rules.count,
             Set(rules.map(\.layer)).count == rules.count
@@ -186,6 +186,15 @@ public enum MicroConfigurationValidator {
         }
         for key in shortcut.mainKeys {
             try validateIdentifier(key.key, maximum: 32, label: "Shortcut key")
+        }
+        guard let displayName = shortcut.displayName else { return }
+        try validateLength(displayName, maximum: 128, label: "Shortcut name")
+        guard
+            displayName.unicodeScalars.allSatisfy({
+                !CharacterSet.controlCharacters.contains($0)
+            })
+        else {
+            throw failure("Shortcut name contains unsupported control characters.")
         }
     }
 

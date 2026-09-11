@@ -195,7 +195,7 @@ struct ShortcutEditorView: View {
         recordingPresentation.handle(decision)
         switch decision {
         case .captured(let recordedShortcut):
-            shortcut = recordedShortcut
+            shortcut = recordedShortcut.renamed(to: shortcut?.displayName)
             showMessage("Recorded \(formattedShortcut).", isError: false)
         case .cancelled:
             showMessage("Recording cancelled.", isError: false)
@@ -246,7 +246,8 @@ struct ShortcutEditorView: View {
             pressCount: pressCount ?? shortcut?.pressCount ?? 1,
             interTapIntervalMilliseconds: interTapIntervalMilliseconds
                 ?? shortcut?.interTapIntervalMilliseconds
-                ?? 120
+                ?? 120,
+            displayName: shortcut?.displayName
         )
     }
 
@@ -256,7 +257,8 @@ struct ShortcutEditorView: View {
             mainKeys: [],
             modifiers: shortcut.modifiers,
             pressCount: shortcut.pressCount,
-            interTapIntervalMilliseconds: shortcut.interTapIntervalMilliseconds
+            interTapIntervalMilliseconds: shortcut.interTapIntervalMilliseconds,
+            displayName: shortcut.displayName
         )
     }
 
@@ -266,7 +268,8 @@ struct ShortcutEditorView: View {
             modifiers: shortcut?.modifiers ?? [],
             pressCount: shortcut?.pressCount ?? 1,
             interTapIntervalMilliseconds: shortcut?.interTapIntervalMilliseconds ?? 120,
-            virtualKeyCode: MacVirtualKeyMap.keyCodeForCurrentLayout(for: key)
+            virtualKeyCode: MacVirtualKeyMap.keyCodeForCurrentLayout(for: key),
+            displayName: shortcut?.displayName
         )
     }
 

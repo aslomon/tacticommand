@@ -3,10 +3,36 @@ import XCTest
 @testable import CreatorMicroCore
 
 final class LayerSelectionStateTests: XCTestCase {
-    func testLayerCommandsWrapAcrossAllSixSoftwareLayers() {
-        XCTAssertEqual(LayerCommand.next.destination(from: .snippets), .codex)
-        XCTAssertEqual(LayerCommand.previous.destination(from: .codex), .snippets)
+    func testLayerCommandsFollowTheTenLayerSoftwareCycle() {
+        XCTAssertEqual(
+            LayerIndex.all,
+            [
+                .desktop,
+                .claudeCodeCLI,
+                .claudeApp,
+                .codexCLI,
+                .codexApp,
+                .cursor,
+                .meetingControls,
+                .agentFocus,
+                .windowManagement,
+                .snippetCommands,
+            ]
+        )
+        XCTAssertEqual(LayerCommand.next.destination(from: .desktop), .claudeCodeCLI)
+        XCTAssertEqual(LayerCommand.next.destination(from: .snippetCommands), .desktop)
+        XCTAssertEqual(LayerCommand.previous.destination(from: .desktop), .snippetCommands)
+        XCTAssertEqual(LayerCommand.previous.destination(from: .cursor), .codexApp)
         XCTAssertEqual(LayerCommand.select(.meetings).destination(from: .desktop), .meetings)
+    }
+
+    func testDisplayPositionUsesCycleOrderInsteadOfSerializedRawValue() {
+        XCTAssertEqual(LayerIndex.desktop.displayPosition, 1)
+        XCTAssertEqual(LayerIndex.claudeCodeCLI.displayPosition, 2)
+        XCTAssertEqual(LayerIndex.meetingControls.displayPosition, 7)
+        XCTAssertEqual(LayerIndex.agentFocus.displayPosition, 8)
+        XCTAssertEqual(LayerIndex.windowManagement.displayPosition, 9)
+        XCTAssertEqual(LayerIndex.snippetCommands.displayPosition, 10)
     }
 
     func testLocalSelectionRecordsItsExactSourceWithoutFirmwareConfirmation() {

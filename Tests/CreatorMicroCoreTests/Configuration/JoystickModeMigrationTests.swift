@@ -51,7 +51,7 @@ final class JoystickModeMigrationTests: XCTestCase {
         let migrated = try MicroConfigurationMigrator.migrate(legacy)
 
         XCTAssertEqual(migrated.layer(.desktop)?.joystick, off)
-        XCTAssertEqual(migrated.layer(.windows)?.joystick, pointer)
+        XCTAssertEqual(migrated.layer(.windowManagement)?.joystick, pointer)
     }
 
     func testVersionTwoRunsGeometryAndJoystickMigrationsInOrder() throws {

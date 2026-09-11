@@ -111,12 +111,12 @@ struct ActionOptionsView: View {
         let destination = command.destination(from: model.activeLayer)
         let destinationName =
             model.configuration.layer(destination)?.name
-            ?? "Layer \(destination.rawValue + 1)"
+            ?? "Layer \(destination.displayPosition)"
         let actionLabel = command == .next ? "Next press" : "Previous press"
         return InspectorSection(title: "LAYER CHANGE") {
             Label("\(actionLabel): \(destinationName)", systemImage: "square.3.layers.3d")
                 .font(.system(size: 12, weight: .medium))
-            Text("Next and Previous move through all six layers and wrap at either end.")
+            Text("Next and Previous move through all configured layers and wrap at either end.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

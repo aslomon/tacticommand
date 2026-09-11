@@ -164,9 +164,9 @@ public struct LocalAutomationCodec: Sendable {
     ) throws -> LayerIndex {
         try validate(keys: params.keys, expected: expected, requestID: requestID)
         guard let rawLayer = strictInteger(params["layer"]),
-            let layer = LayerIndex(rawValue: rawLayer)
+            let layer = LocalAutomationLayerWireID.layer(for: rawLayer)
         else {
-            throw failure(.invalidParameters, "The layer must be an integer from 0 through 5.", requestID: requestID)
+            throw failure(.invalidParameters, "The layer must be an integer from 0 through 9.", requestID: requestID)
         }
         return layer
     }
@@ -215,11 +215,14 @@ public struct LocalAutomationCodec: Sendable {
         case .listLayers:
             return (Method.listLayers.rawValue, [:])
         case .setLayer(let layer):
-            return (Method.setLayer.rawValue, ["layer": layer.rawValue])
+            return (Method.setLayer.rawValue, ["layer": LocalAutomationLayerWireID.value(for: layer)])
         case .triggerBinding(let control, let layer):
             return (
                 Method.triggerBinding.rawValue,
-                ["control": control.rawValue, "layer": layer.rawValue]
+                [
+                    "control": control.rawValue,
+                    "layer": LocalAutomationLayerWireID.value(for: layer),
+                ]
             )
         }
     }
