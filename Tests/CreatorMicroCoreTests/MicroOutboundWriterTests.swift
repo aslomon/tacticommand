@@ -4,6 +4,33 @@ import XCTest
 @testable import CreatorMicroCore
 
 final class MicroOutboundWriterTests: XCTestCase {
+    func testMessagesRespectFirmwareCooldown() async throws {
+        let transport = TimedWriteTransport()
+        let writer = MicroOutboundWriter()
+        let first = await writer.enqueue(Data("{}".utf8), to: transport)
+        let second = await writer.enqueue(Data("{}".utf8), to: transport)
+        try await first.value
+        try await second.value
+        let instants = await transport.instants
+        XCTAssertEqual(instants.count, 2)
+        XCTAssertGreaterThanOrEqual(instants[0].duration(to: instants[1]), .milliseconds(50))
+    }
+
+    func testFailedMessagesStillRespectCooldown() async throws {
+        let transport = TimedWriteTransport(failFirst: true)
+        let writer = MicroOutboundWriter()
+        let first = await writer.enqueue(Data("{}".utf8), to: transport)
+        let second = await writer.enqueue(Data("{}".utf8), to: transport)
+        do {
+            try await first.value
+            XCTFail("Expected transport write failure")
+        } catch MicroConnectionError.outputReportFailed {}
+        try await second.value
+        let instants = await transport.instants
+        XCTAssertEqual(instants.count, 2)
+        XCTAssertGreaterThanOrEqual(instants[0].duration(to: instants[1]), .milliseconds(50))
+    }
+
     func testConcurrentMultiFramePayloadsRemainContiguous() async throws {
         let transport = ControlledWriteTransport()
         let writer = MicroOutboundWriter()
@@ -24,6 +51,51 @@ final class MicroOutboundWriterTests: XCTestCase {
         let completedReports = await transport.capturedReports()
 
         XCTAssertEqual(completedReports, firstFrames + secondFrames)
+    }
+
+    func testCancellationAfterFirstFrameStillFinishesTheAtomicPayload() async throws {
+        let transport = ControlledWriteTransport()
+        let writer = MicroOutboundWriter()
+        let payload = Data(repeating: 0x41, count: 180)
+        let frames = MicroReportFramer.frames(for: payload, transport: .usb)
+        let operation = await writer.enqueue(payload, to: transport)
+        try await transport.waitForBlockedWriteCount(1)
+        operation.cancel()
+        try await transport.releaseWrites(count: frames.count)
+        try await operation.value
+        let reports = await transport.capturedReports()
+        XCTAssertEqual(reports, frames)
+    }
+
+    func testQueuedCancellationWritesNoPartialMessage() async throws {
+        let transport = ControlledWriteTransport()
+        let writer = MicroOutboundWriter()
+        let first = await writer.enqueue(Data("first".utf8), to: transport)
+        try await transport.waitForBlockedWriteCount(1)
+        let cancelled = await writer.enqueue(Data("cancelled".utf8), to: transport)
+        cancelled.cancel()
+        try await transport.releaseWrites(count: 1)
+        try await first.value
+        do {
+            try await cancelled.value
+            XCTFail()
+        } catch is CancellationError {}
+        let reports = await transport.capturedReports()
+        XCTAssertEqual(reports, MicroReportFramer.frames(for: Data("first".utf8), transport: .usb))
+    }
+}
+
+private actor TimedWriteTransport: MicroTransport {
+    nonisolated let kind = MicroTransportKind.usb
+    nonisolated let incomingReports = AsyncStream<Data> { $0.finish() }
+    private(set) var instants: [ContinuousClock.Instant] = []
+    private let failFirst: Bool
+
+    init(failFirst: Bool = false) { self.failFirst = failFirst }
+
+    func write(_ report: Data) async throws {
+        instants.append(ContinuousClock().now)
+        if failFirst && instants.count == 1 { throw MicroConnectionError.outputReportFailed(code: -1) }
     }
 }
 

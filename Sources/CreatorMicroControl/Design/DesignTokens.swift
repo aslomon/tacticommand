@@ -1,3 +1,4 @@
+import CreatorMicroCore
 import SwiftUI
 
 enum DesignTokens {
@@ -10,6 +11,7 @@ enum DesignTokens {
     static let keyRadius: CGFloat = 9
 
     static let signal = Color(red: 36 / 255, green: 200 / 255, blue: 219 / 255)
+    static let signalSoft = Color(red: 36 / 255, green: 200 / 255, blue: 219 / 255).opacity(0.14)
     static let graphite = Color(red: 23 / 255, green: 25 / 255, blue: 29 / 255)
     static let working = Color(red: 52 / 255, green: 120 / 255, blue: 246 / 255)
     static let ready = Color(red: 48 / 255, green: 209 / 255, blue: 88 / 255)
@@ -26,6 +28,18 @@ extension Color {
             red: Double((number >> 16) & 0xFF) / 255,
             green: Double((number >> 8) & 0xFF) / 255,
             blue: Double(number & 0xFF) / 255
+        )
+    }
+
+    /// Decodes the shared `RGBColor` wire/device value directly from its packed
+    /// `rawValue` (0xRRGGBB) — the same color the hardware payload builder sends.
+    /// Explicitly module-qualified: `SwiftUI`'s AppKit import also exposes a C
+    /// `RGBColor` (QuickDraw) with the same unqualified name.
+    init(rgb value: CreatorMicroCore.RGBColor) {
+        self.init(
+            red: Double((value.rawValue >> 16) & 0xFF) / 255,
+            green: Double((value.rawValue >> 8) & 0xFF) / 255,
+            blue: Double(value.rawValue & 0xFF) / 255
         )
     }
 }

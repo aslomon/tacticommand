@@ -14,6 +14,17 @@ final class IOKitConnectionStateTests: XCTestCase {
         XCTAssertEqual(state.activeConnection?.device, 7)
     }
 
+    func testConnectCapturesTheRealObservedProductIdentifier() {
+        var state = IOKitConnectionState<Int>()
+
+        XCTAssertTrue(state.connect(7, transportKind: .usb, productIdentifier: 0x8298))
+
+        XCTAssertEqual(state.productIdentifier, 0x8298)
+
+        XCTAssertTrue(state.disconnect { $0 == 7 })
+        XCTAssertNil(state.productIdentifier)
+    }
+
     func testSecondConnectionCannotOverwriteActiveDevice() {
         var state = IOKitConnectionState<Int>()
         XCTAssertTrue(state.connect(7, transportKind: .usb))
@@ -58,5 +69,14 @@ final class IOKitConnectionStateTests: XCTestCase {
         XCTAssertNil(state.activeConnection)
         XCTAssertFalse(state.connect(9, transportKind: .bluetoothLowEnergy))
         XCTAssertFalse(state.beginCancellation())
+    }
+
+    func testRemovedTransportCannotRetargetAReplacementDevice() {
+        var state = IOKitConnectionState<Int>()
+        XCTAssertTrue(state.connect(7, transportKind: .usb))
+        XCTAssertTrue(state.disconnect { $0 == 7 })
+        XCTAssertFalse(state.connect(9, transportKind: .usb))
+        XCTAssertNil(state.activeConnection)
+        XCTAssertTrue(state.beginCancellation())
     }
 }

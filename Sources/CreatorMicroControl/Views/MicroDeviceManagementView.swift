@@ -4,6 +4,7 @@ import SwiftUI
 struct MicroDeviceManagementView: View {
     let model: AppModel
     @Environment(\.dismiss) private var dismiss
+    @State private var isSetupGuidePresented = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -19,6 +20,9 @@ struct MicroDeviceManagementView: View {
         .padding(22)
         .frame(width: 500)
         .task { model.refreshDeviceInventory() }
+        .sheet(isPresented: $isSetupGuidePresented) {
+            SetupGuideView(model: model)
+        }
     }
 
     private var header: some View {
@@ -149,6 +153,11 @@ struct MicroDeviceManagementView: View {
                 model.reconnect()
             } label: {
                 Label("Reconnect App", systemImage: "bolt.horizontal.circle")
+            }
+            Button {
+                isSetupGuidePresented = true
+            } label: {
+                Label("Setup Guide", systemImage: "checkmark.shield")
             }
             Spacer()
             Button {

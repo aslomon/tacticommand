@@ -4,12 +4,14 @@ import SwiftUI
 struct ConfigurationWindowView: View {
     let model: AppModel
     @State private var isDeviceBrowserPresented = false
+    @State private var isSetupGuidePresented = false
 
     var body: some View {
         VStack(spacing: 0) {
             ConfigurationHeader(
                 model: model,
-                showDevices: { isDeviceBrowserPresented = true }
+                showDevices: { isDeviceBrowserPresented = true },
+                showSetupGuide: { isSetupGuidePresented = true }
             )
             if !model.systemAccess.isComplete {
                 SystemAccessBanner(model: model)
@@ -46,12 +48,16 @@ struct ConfigurationWindowView: View {
         .sheet(isPresented: $isDeviceBrowserPresented) {
             MicroDeviceManagementView(model: model)
         }
+        .sheet(isPresented: $isSetupGuidePresented) {
+            SetupGuideView(model: model)
+        }
     }
 }
 
 private struct ConfigurationHeader: View {
     let model: AppModel
     let showDevices: () -> Void
+    let showSetupGuide: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -75,6 +81,10 @@ private struct ConfigurationHeader: View {
                     .foregroundStyle(DesignTokens.signal)
             }
             LaunchAtLoginSettingsToggle(model: model)
+            Button(action: showSetupGuide) {
+                Label("Setup", systemImage: "checkmark.shield")
+            }
+            .buttonStyle(.bordered)
             Button(action: showDevices) {
                 Label("Devices", systemImage: "dot.radiowaves.left.and.right")
             }

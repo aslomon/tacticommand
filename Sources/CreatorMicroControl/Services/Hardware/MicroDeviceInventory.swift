@@ -70,7 +70,7 @@ struct IOKitMicroDeviceInventory: MicroDeviceInventoryReading {
     func connectedDevices() -> [MicroDeviceRecord] {
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits())
         let criteria = IOKitMicroMatchingPolicy.creatorMicro.managerCriteria
-        IOHIDManagerSetDeviceMatching(manager, criteria as CFDictionary)
+        IOHIDManagerSetDeviceMatchingMultiple(manager, criteria as CFArray)
         guard IOHIDManagerOpen(manager, IOOptionBits()) == kIOReturnSuccess else {
             return []
         }

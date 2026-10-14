@@ -121,6 +121,10 @@ extension AppModel {
 
     func saveConfiguration() {
         guard canMutateConfiguration else { return }
+        resetLightingBoundary()
+        releaseActiveMicrophoneActions()
+        configureRuntimeRouter()
+        refreshLightingAfterLayerChange()
         configurationGeneration &+= 1
         let snapshot = configuration
         let generation = configurationGeneration

@@ -32,11 +32,17 @@ extension AppModel {
         connectionState = state
         switch state {
         case .connected(_, let status):
+            resetLightingBoundary()
             clearResolvedDeviceDiagnostic()
             refreshDeviceInventory()
+            deviceIdentity = await coordinator.identitySnapshot
+            configureRuntimeRouter()
             if let status { apply(status) }
             await synchronizeLighting()
         case .disconnected, .connecting, .unavailable:
+            resetLightingBoundary()
+            invalidateDeviceSetup()
+            deviceIdentity = nil
             pressedControls.removeAll()
             let releases = resetActiveRoutedActions()
             for release in releases {
@@ -62,17 +68,23 @@ extension AppModel {
     private func handle(_ input: MicroInputEvent) async {
         updatePressedControls(with: input)
         let routedActions = runtimeRouter.route(input, on: selectedLayer)
+        recordLightingInput(input, routed: routedActions)
         let actions = resolvePressActions(routedActions, from: input)
+        let generation = lightingGeneration
         for action in actions {
-            await execute(action)
+            await execute(action, control: canonicalControl(input.control), generation: generation)
         }
     }
 
-    func execute(_ event: RoutedCreatorAction) async {
+    func execute(_ event: RoutedCreatorAction, control: ControlID? = nil, generation: UInt64? = nil) async {
+        let generation = generation ?? lightingGeneration
         switch await executeRoutedAction(event) {
         case .success:
+            guard generation == lightingGeneration else { return }
             clearResolvedActionError()
         case .failure(let failure):
+            if let control { recordLightingFailure(control: control, generation: generation) }
+            guard generation == lightingGeneration else { return }
             lastError = failure.message
             applySystemAccess(accessController.snapshot())
         }
@@ -125,6 +137,7 @@ extension AppModel {
     }
 
     private func apply(_ status: DeviceStatus) {
+        if deviceStatus?.layerIndex != status.layerIndex { invalidateDeviceSetup() }
         deviceStatus = status
         layerSelection.observe(status: status)
     }

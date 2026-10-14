@@ -80,6 +80,14 @@ depending on the rede application.
     Browser and Writing remain available as optional swap-in presets.
 26. Render the menu-bar popover on an opaque native surface on first open,
     activate it for immediate interaction, and keep all status labels readable.
+27. Offer an explicit Setup Guide that inspects a Creator Micro 2's firmware
+    keymap and, only after a separate confirmation naming the active physical
+    layer by index and name, provisions TactiCommand's dedicated physical
+    layer while preserving every other physical layer and backing up the
+    original keymap first. Restoring that backup requires its own separate
+    confirmation and only runs on the exact connection that produced it.
+    Codex Micro and unrecognized models never receive automatic firmware
+    writes; Codex gets a read-only readiness check and configurator guidance.
 
 ## Default layers
 
@@ -106,22 +114,41 @@ depending on the rede application.
 
 ## Hardware constraints
 
-- VID `0x303A`, PID `0x8360`, vendor usage page `0xFF00`, report id `0x06`.
+- VID `0x303A`, Codex PID `0x8360`, Creator Micro 2 PIDs `0x8297` / `0x8298`,
+  vendor collection `0xFF00:0x01`, report id `0x06`. PIDs are model identifiers,
+  independent of transport.
 - USB output reports are 63 bytes; Bluetooth LE output reports are 64 bytes and
-  include the report id prefix.
+  include the report id prefix. The IOKit output adapter also prefixes Creator
+  USB buffers with the report id; Codex USB retains its verified bare buffer.
 - A successful `device.status` response, not an IOKit return code, proves that
-  the output path works.
-- Only Agent keys are individually RGB-addressable. Action-key backlight and
-  underglow are global zones.
+  the output path works. A correlated 404 fails verification with official
+  firmware update guidance; a version-only response is not a substitute.
+- Send standard `method` / `params` envelopes, while accepting both standard
+  and compact incoming messages. Creator `AG06`–`AG12` map to Action controls;
+  a dedicated TactiCommand device layer uses `AG13` / `AG14` / `AG15` for dial
+  clockwise / counter-clockwise / press. `kb.radial` is a joystick alias;
+  its hide operation releases the stick even if the last distance is nonzero.
+- Lighting capability is model-driven: Creator Micro 2 individually addresses
+  all 13 LED positions (the wide microphone switch spans two of them); Codex
+  individually addresses its six Agent keys and uses one shared zone for the
+  rest. An unrecognized model gets the conservative Agent-only addressing and
+  no assumed full-RGB layout.
 - The wide microphone cap may actuate both `ACT10` and `ACT11`; linked mode must
   emit one logical action.
-- The meaning of the read-only `device.status.layer_index` value is not validated
-  against the installed firmware. Preserve it as a raw diagnostic only; it must
-    never select or confirm one of the app-owned software layers.
+- Creator firmware's `device.status.layer_index` is one-based and selects the
+  onboard keymap layer for explicit setup. It does not select an app software
+  layer. The meaning of that value for unrelated firmware is not assumed.
 - The haptic control beside the three white indicators selects one of three
   Bluetooth host profiles and is not a bindable software-layer control.
 - Keys report distinct down/up events, so short/long press routing is supported;
   encoder rotation reports momentary pulses and cannot use long press.
+- Firmware keymap writes always re-read the device immediately before writing
+  and verify identity, profile, physical layer, and keymap content; the write
+  aborts and the existing backup is kept if anything changed. A readback
+  mismatch after writing keeps the backup and does not retry automatically.
+- Firmware backups are written to local disk and persist across app restarts
+  and device reconnects; restoring one still requires the exact original
+  connection.
 
 ## Acceptance criteria
 
@@ -160,6 +187,11 @@ depending on the rede application.
 - The device sheet displays the observed product name and transport for every
   matching connected HID device. It never labels an unpaired nearby device as
   directly connectable by TactiCommand.
+- Provisioning a Creator Micro 2 only proceeds after the user confirms the
+  exact active physical layer being replaced; restoring only proceeds after a
+  separate confirmation and only on the connection that created the backup.
+  Neither happens automatically from detecting a connection, and inspecting
+  never writes anything by itself.
 - Malformed hardware JSON never exposes `DecodingError`, coding paths, or raw
   parser details to the user. A later valid device event clears that transient
   diagnostic without clearing an unrelated action failure.

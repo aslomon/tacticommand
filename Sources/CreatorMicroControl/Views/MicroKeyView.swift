@@ -6,6 +6,12 @@ struct MicroKey: View {
     let model: AppModel
     var width: CGFloat = 68
     var labelOverride: String?
+    /// Set when this key's physical cap is shared with another `ControlID` on the
+    /// connected device (e.g. Creator's wide action10/action11 switch). Purely
+    /// presentational: the other control's saved binding is never touched here.
+    var physicallySharedWith: ControlID?
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button {
@@ -16,7 +22,9 @@ struct MicroKey: View {
                     .font(.system(size: 14, weight: .medium))
                 Text(labelOverride ?? keyLabel)
                     .font(.system(size: 9, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.85)
                 if let liveState {
                     HStack(spacing: 3) {
                         Circle()
@@ -35,9 +43,15 @@ struct MicroKey: View {
                 RoundedRectangle(cornerRadius: DesignTokens.keyRadius)
                     .stroke(borderColor, lineWidth: isSelected ? 2 : 1)
             }
-            .offset(y: isPressed ? 2 : 0)
+            .overlay(alignment: .bottom) { lightBar }
+            .offset(y: pressOffset)
+            .opacity(pressCrossfadeOpacity)
+            .animation(.easeOut(duration: 0.11), value: isPressed)
+            .animation(.easeOut(duration: 0.18), value: isSelected)
+            .animation(.easeOut(duration: 0.18), value: appearance)
         }
         .buttonStyle(.plain)
+        .help(tooltipText)
         .accessibilityLabel(accessibilityLabel)
     }
 
@@ -46,8 +60,30 @@ struct MicroKey: View {
     }
 
     private var isSelected: Bool { model.selectedControl == control }
-    private var isPressed: Bool { model.pressedControls.contains(control) }
+    private var isPressed: Bool {
+        model.pressedControls.contains(control)
+            || physicallySharedWith.map { model.pressedControls.contains($0) } == true
+    }
 
+    /// Physical press moves the key 2 pt; Reduce Motion drops the displacement
+    /// and relies on `pressCrossfadeOpacity` instead.
+    private var pressOffset: CGFloat {
+        reduceMotion ? 0 : (isPressed ? 2 : 0)
+    }
+
+    private var pressCrossfadeOpacity: Double {
+        reduceMotion && isPressed ? 0.7 : 1
+    }
+
+    /// Exact device appearance for this key — the same color/brightness/effect/speed
+    /// `AppModel` sends to the hardware (observed signal > agent status > resting
+    /// function-category color > nil for unassigned/no signal). Single source of truth
+    /// for interior fill, border tint, and the light bar; never re-derived locally.
+    private var appearance: LightingKeyAppearance? {
+        model.keyAppearance(for: control)
+    }
+
+    /// Text-only presentation (e.g. "MUTED", "62%"). Its color comes from `appearance`.
     private var liveState: KeyActionLiveState? {
         KeyActionLiveState.resolve(
             action: action,
@@ -57,66 +93,86 @@ struct MicroKey: View {
     }
 
     private var keyBackground: Color {
-        if let liveState { return color(for: liveState.tone).opacity(0.58) }
+        guard let appearance else {
+            return isSelected ? DesignTokens.signalSoft : Color.white.opacity(0.1)
+        }
+        return Color(rgb: appearance.color).opacity(clampedBrightness(appearance) * 0.4)
+    }
+
+    private var borderColor: Color {
         if isSelected { return DesignTokens.signal }
-        if let index = control.agentIndex,
+        guard let appearance else { return Color.white.opacity(0.14) }
+        return Color(rgb: appearance.color).opacity(0.9)
+    }
+
+    private var keyForeground: Color {
+        appearance == nil && isSelected ? DesignTokens.signal : .white.opacity(0.9)
+    }
+
+    private var liveStateColor: Color {
+        guard let appearance else { return .clear }
+        return Color(rgb: appearance.color)
+    }
+
+    /// Narrow signature light bar: the per-key hardware diagnostic, mirroring
+    /// the pad canvas ambient zone described in DESIGN.md "Signature detail". Carries
+    /// the exact device color at its real brightness, so it reads as luminous for any
+    /// bound function and stays neutral/dim only when the key is truly unassigned.
+    private var lightBar: some View {
+        Capsule()
+            .fill(lightBarColor)
+            .frame(width: max(width - 20, 24), height: 2)
+            .padding(.bottom, 3)
+            .opacity(lightBarOpacity)
+    }
+
+    private var lightBarColor: Color {
+        guard let appearance else {
+            return isSelected ? DesignTokens.signal : Color.white.opacity(0.16)
+        }
+        return Color(rgb: appearance.color)
+    }
+
+    private var lightBarOpacity: Double {
+        guard let appearance else { return 1 }
+        return clampedBrightness(appearance)
+    }
+
+    private func clampedBrightness(_ appearance: LightingKeyAppearance) -> Double {
+        min(max(appearance.brightness, 0), 1)
+    }
+
+    private var accessibilityLabel: String {
+        var base = "\(control.rawValue), \(action.actionTitle)"
+        if let liveState { base += ", \(liveState.label)" }
+        if let physicallySharedWith {
+            base += ", physically shares one key with \(physicallySharedWith.rawValue)"
+        }
+        return base
+    }
+
+    private var tooltipText: String {
+        var base = agentSessionTitle ?? labelOverride ?? action.actionTitle
+        if let physicallySharedWith {
+            base += " — shares one physical key with \(physicallySharedWith.rawValue)"
+        }
+        return base
+    }
+
+    private var keyLabel: String {
+        if let agentSessionTitle { return agentSessionTitle.uppercased() }
+        return action.compactActionTitle
+    }
+
+    private var agentSessionTitle: String? {
+        guard let index = control.agentIndex,
             MicroKeyPresentationPolicy.showsAgentSession(
                 for: control,
                 activeLayer: model.activeLayer
             ),
             model.agentSnapshot.slots.indices.contains(index)
-        {
-            let light = model.agentSnapshot.slots[index].deviceLight
-            return Color(creatorMicroHex: light.hex)?.opacity(max(light.brightness, 0.18))
-                ?? Color.white.opacity(0.1)
-        }
-        return Color.white.opacity(isPressed ? 0.22 : 0.1)
-    }
-
-    private var borderColor: Color {
-        if isSelected { return DesignTokens.signal }
-        if let liveState { return color(for: liveState.tone).opacity(0.9) }
-        return Color.white.opacity(0.14)
-    }
-
-    private var keyForeground: Color {
-        liveState == nil && isSelected ? .black : .white.opacity(0.9)
-    }
-
-    private var liveStateColor: Color {
-        guard let liveState else { return .clear }
-        return color(for: liveState.tone)
-    }
-
-    private var accessibilityLabel: String {
-        let base = "\(control.rawValue), \(action.actionTitle)"
-        guard let liveState else { return base }
-        return "\(base), \(liveState.label)"
-    }
-
-    private func color(for tone: KeyActionStateTone) -> Color {
-        switch tone {
-        case .failure: DesignTokens.failure
-        case .recording: DesignTokens.recording
-        case .attention: DesignTokens.attention
-        case .signal: DesignTokens.signal
-        case .ready: DesignTokens.ready
-        case .unavailable: .secondary
-        }
-    }
-
-    private var keyLabel: String {
-        if let index = control.agentIndex,
-            MicroKeyPresentationPolicy.showsAgentSession(
-                for: control,
-                activeLayer: model.activeLayer
-            ),
-            model.agentSnapshot.slots.indices.contains(index),
-            let session = model.agentSnapshot.slots[index].session
-        {
-            return session.title.uppercased()
-        }
-        return action.actionTitle.uppercased()
+        else { return nil }
+        return model.agentSnapshot.slots[index].session?.title
     }
 }
 

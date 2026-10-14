@@ -16,7 +16,7 @@ struct HIDDeviceDescriptor: Equatable, Sendable {
 struct IOKitMicroMatchingPolicy: Sendable {
     static let creatorMicro = IOKitMicroMatchingPolicy(
         vendorIdentifier: MicroProtocolConstants.vendorIdentifier,
-        productIdentifier: MicroProtocolConstants.productIdentifier,
+        supportedProductIdentifiers: MicroProtocolConstants.supportedProductIdentifiers,
         requiredUsagePair: HIDUsagePair(
             page: MicroProtocolConstants.vendorUsagePage,
             usage: 0x0001
@@ -24,19 +24,21 @@ struct IOKitMicroMatchingPolicy: Sendable {
     )
 
     let vendorIdentifier: Int
-    let productIdentifier: Int
+    let supportedProductIdentifiers: Set<Int>
     let requiredUsagePair: HIDUsagePair
 
-    var managerCriteria: [String: Int] {
-        [
-            kIOHIDVendorIDKey: vendorIdentifier,
-            kIOHIDProductIDKey: productIdentifier,
-        ]
+    var managerCriteria: [[String: Int]] {
+        supportedProductIdentifiers.sorted().map { productIdentifier in
+            [
+                kIOHIDVendorIDKey: vendorIdentifier,
+                kIOHIDProductIDKey: productIdentifier,
+            ]
+        }
     }
 
     func matches(_ descriptor: HIDDeviceDescriptor) -> Bool {
         descriptor.vendorIdentifier == vendorIdentifier
-            && descriptor.productIdentifier == productIdentifier
+            && supportedProductIdentifiers.contains(descriptor.productIdentifier)
             && descriptor.usagePairs.contains(requiredUsagePair)
     }
 }

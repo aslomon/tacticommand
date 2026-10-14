@@ -61,6 +61,8 @@ Use the 4 pt base scale: `4, 8, 12, 16, 24, 32`.
 ## Motion
 
 - Selection and status changes: 180 ms ease-out.
+- Physical key press: 110 ms ease-out, 2 pt depression; Reduce Motion drops
+  the displacement and cross-fades opacity instead.
 - Layer changes: 220 ms spring, low bounce.
 - Recording state: a restrained 1.4 s breathing signal ring.
 - Error and approval states do not bounce; they use color plus an icon change.
@@ -72,6 +74,10 @@ Use the 4 pt base scale: `4, 8, 12, 16, 24, 32`.
 - **Menu bar popover:** use a native anchored popover with a visible arrow to
   the status item. Keep the 392 pt content width and avoid narrow text wrapping.
 - **Pad canvas:** proportionally accurate key, dial, stick, and touch layout.
+  The AG0/AG1 top-row order follows the connected device's real physical
+  input layout. Physical Creator Micro 2 verification places AG0 left of AG1,
+  matching the historical Codex and unknown-model arrangement. LED wiring
+  assumptions must not reverse input geometry or modify saved bindings.
 - **Inspector:** action type first, then only fields relevant to that action.
 - **Provider picker:** built-ins first, detected providers next, custom app last.
 - **Layer rail:** ten numbered segments in workflow order with editable names
@@ -159,15 +165,40 @@ Use the 4 pt base scale: `4, 8, 12, 16, 24, 32`.
   green, mixed state is orange, unavailable state is neutral, active dictation
   is teal, and current volume is cyan. The observed state never claims that a
   requested toggle succeeded before CoreAudio confirms it.
-- **Physical key state:** only Agent keys can receive individual RGB colors.
-  When an Agent key owns a stateful action on the active layer, that action state
-  takes priority over its agent-session color. Action keys remain limited to the
-  firmware's shared backlight zone. Agent-session titles and colors appear only
-  while the dedicated Agent Focus layer is active.
+- **Physical key state:** individual-key RGB capability is model- and
+  capability-driven, not a fixed Agent-only rule. Creator Micro backlights all
+  13 LED positions individually — the wide action10/action11 switch is one
+  physical cap spanning two of those positions, not two independent keys.
+  Codex backlights its 6 Agent keys individually while the remaining action
+  keys share one firmware backlight zone. When a key owns a stateful action
+  on the active layer, that action state takes priority over its individual
+  or shared-zone color. Agent-session titles and colors appear only while the
+  dedicated Agent Focus layer is active. An unrecognized or undetected model
+  gets honest unsupported lighting guidance rather than an assumed full-RGB
+  layout.
 - **Device management:** a dedicated sheet lists only HID devices that match the
   supported hardware identity and are currently available to the app. It names
   the observed product and transport. Pairing and nearby discovery link to
   macOS Bluetooth Settings instead of presenting a fake in-app Connect button.
+- **Setup Guide:** a scrollable sheet reachable from the configuration header
+  and from Device Management. It shows permission state (reusing the system
+  access banner and its explicit request buttons), live connection and model,
+  and inspected firmware/physical-layer readiness behind an explicit
+  Inspect/Refresh — inspecting never writes anything by itself, and a live
+  connection alone is never shown as success. Provisioning only appears for a
+  Creator Micro 2 that isn't already prepared; confirming it names the active
+  physical layer by index and name, states that every other physical layer is
+  preserved, and backs up the complete original keymap first. Codex shows its
+  own readiness check and points to its official configurator instead of
+  writing anything; an unrecognized model gets honest unsupported guidance and
+  no write controls at all. Restore is a separate confirmation, stays disabled
+  outside the exact connection that produced its backup, and keeps that
+  backup's path visible, copyable, and revealable in Finder even while restore
+  is unavailable — the file itself survives app and device restarts. A
+  dedicated note distinguishes the controller's onboard physical layer from
+  TactiCommand's software layers. The Creator firmware release link is scoped
+  to that model only and never implied to be the latest release for every
+  device.
 
 ## Brand rules
 
@@ -199,6 +230,10 @@ The three narrow hardware indicators always visualize the reported Bluetooth
 ambient zone is green when ready, cyan while dictation is active, and breathing
 red while microphone input is muted. Agent keys retain their independent status
 colors on top of that global signal.
+
+Each key also carries a narrow bottom light bar echoing this ambient signal at
+key scale: the key's live action tone when present, the signal color while
+selected, or a quiet neutral line otherwise.
 
 ## Accessibility
 

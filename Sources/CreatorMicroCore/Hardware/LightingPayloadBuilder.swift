@@ -37,6 +37,7 @@ public enum LightingPayloadError: Error, Equatable, LocalizedError {
     case requiresAllAgentKeys
     case duplicateAgentKey(Int)
     case emptyRGBConfiguration
+    case emptyKeyStatus
 
     public var errorDescription: String? {
         switch self {
@@ -50,6 +51,8 @@ public enum LightingPayloadError: Error, Equatable, LocalizedError {
             "Agent status contains duplicate key index \(index)."
         case .emptyRGBConfiguration:
             "RGB configuration requires ambient or key lighting."
+        case .emptyKeyStatus:
+            "A key lighting update requires at least one key."
         }
     }
 }
@@ -70,9 +73,10 @@ public struct AgentKeyLighting: Codable, Hashable, Sendable {
         effect: LightingEffect = .solid,
         speed: Double = 0,
         syncKeys: Bool? = nil,
-        syncAmbient: Bool? = nil
+        syncAmbient: Bool? = nil,
+        validIndices: Range<Int> = 0..<MicroProtocolConstants.agentKeyCount
     ) throws {
-        guard (0..<MicroProtocolConstants.agentKeyCount).contains(index) else {
+        guard validIndices.contains(index) else {
             throw LightingPayloadError.invalidAgentIndex(index)
         }
         try validateUnit(brightness, field: "brightness")
@@ -120,6 +124,50 @@ public enum LightingPayloadBuilder {
         }
         guard identifiers == Set(0..<MicroProtocolConstants.agentKeyCount) else {
             throw LightingPayloadError.requiresAllAgentKeys
+        }
+        let entries = lights.sorted { $0.index < $1.index }.map(AgentStatusEntry.init)
+        return try encode(Notification(method: "v.oai.thstatus", parameters: entries))
+    }
+
+    /// Same wire method as `agentStatus`, but bounded by the real connected device's
+    /// capability instead of the fixed 6-key agent protocol. Creator13 can address all 13
+    /// AG00...AG12 positions this way; Codex6/unknown stay at 6 and reuse `agentStatus`'s
+    /// validation shape.
+    public static func keyStatus(
+        _ lights: [AgentKeyLighting],
+        capability: DeviceCapabilityProfile
+    ) throws -> Data {
+        let expectedCount = capability.independentlyLitKeyCount
+        guard lights.count == expectedCount else {
+            throw LightingPayloadError.requiresAllAgentKeys
+        }
+        let identifiers = Set(lights.map(\.index))
+        guard identifiers.count == lights.count else {
+            let duplicate = duplicateIndex(in: lights) ?? -1
+            throw LightingPayloadError.duplicateAgentKey(duplicate)
+        }
+        guard identifiers == Set(0..<expectedCount) else {
+            throw LightingPayloadError.requiresAllAgentKeys
+        }
+        let entries = lights.sorted { $0.index < $1.index }.map(AgentStatusEntry.init)
+        return try encode(Notification(method: "v.oai.thstatus", parameters: entries))
+    }
+
+    /// Creator firmware accepts updates for individual threads. Codex/unknown retain
+    /// their established all-six-key contract until partial updates are verified there.
+    public static func keyStatusUpdates(
+        _ lights: [AgentKeyLighting],
+        capability: DeviceCapabilityProfile
+    ) throws -> Data {
+        guard capability.supportsIndependentActionKeyLighting else {
+            return try agentStatus(lights)
+        }
+        guard !lights.isEmpty else { throw LightingPayloadError.emptyKeyStatus }
+        if let duplicate = duplicateIndex(in: lights) {
+            throw LightingPayloadError.duplicateAgentKey(duplicate)
+        }
+        for light in lights where !(0..<capability.independentlyLitKeyCount).contains(light.index) {
+            throw LightingPayloadError.invalidAgentIndex(light.index)
         }
         let entries = lights.sorted { $0.index < $1.index }.map(AgentStatusEntry.init)
         return try encode(Notification(method: "v.oai.thstatus", parameters: entries))
@@ -183,8 +231,8 @@ private struct Notification<Parameters: Encodable>: Encodable {
     let parameters: Parameters
 
     enum CodingKeys: String, CodingKey {
-        case method = "m"
-        case parameters = "p"
+        case method
+        case parameters = "params"
     }
 }
 

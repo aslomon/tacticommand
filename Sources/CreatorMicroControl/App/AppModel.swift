@@ -10,9 +10,14 @@ final class AppModel {
     var selectedControl: ControlID = .action10
     var connectionState: DeviceConnectionState = .disconnected
     var deviceStatus: DeviceStatus?
+    /// Real, PID-derived identity of the currently verified connection (nil while
+    /// disconnected). Sourced from the coordinator's observed transport, never from
+    /// `detectedDevices`/`knownDevices`, which are name-based inventory for device pickers.
+    var deviceIdentity: DeviceIdentitySnapshot?
     var providers: [DictationProviderDefinition] = []
     var agentSnapshot = AgentSlotSnapshot.empty
     var pressedControls: Set<ControlID> = []
+    var lightingFeedbackRevision: UInt64 = 0
     var systemAccess: SystemAccessSnapshot
     var launchAtLoginEnabled: Bool
     var isDictating = false
@@ -23,6 +28,18 @@ final class AppModel {
     var knownDevices: [MicroDeviceRecord] = []
     var lastError: String?
     var isReady = false
+    var deviceSetupInspection: FirmwareSetupInspection?
+    var deviceSetupBusy = false
+    var deviceSetupError: String?
+    var deviceSetupBackupPath: String?
+    var deviceSetupCanRestore = false
+    @ObservationIgnored var deviceSetupService: FirmwareSetupService?
+
+    /// Exact UI contract: the real connected device's lighting/key capability. Falls back
+    /// to the conservative 6-key unknown profile while disconnected or unidentified.
+    var capabilityProfile: DeviceCapabilityProfile {
+        deviceIdentity?.capability ?? DeviceCapabilityProfile(productIdentifier: nil)
+    }
 
     @ObservationIgnored let configurationStore: ConfigurationStore
     @ObservationIgnored let providerRegistry: DictationProviderRegistry<WorkspaceInstalledApplicationCatalog>
@@ -38,6 +55,13 @@ final class AppModel {
     @ObservationIgnored let deviceInventory: any MicroDeviceInventoryReading
     @ObservationIgnored let recentDeviceStore: any RecentMicroDeviceStoring
     @ObservationIgnored var runtimeRouter: MicroRuntimeRouter
+    @ObservationIgnored var lightingFeedback = LightingFeedbackTracker()
+    @ObservationIgnored var lightingGeneration: UInt64 = 0
+    @ObservationIgnored var lightingTask: Task<Void, Never>?
+    @ObservationIgnored var feedbackTask: Task<Void, Never>?
+    @ObservationIgnored var desiredLighting: DeviceLightingFrame?
+    @ObservationIgnored var lastLighting: DeviceLightingFrame?
+    @ObservationIgnored var lastLightingInstant: ContinuousClock.Instant?
     @ObservationIgnored var shortOrLongPressState = ShortOrLongPressStateMachine()
     @ObservationIgnored var longPressTasks: [ControlID: Task<Void, Never>] = [:]
     @ObservationIgnored var startupTask: Task<Void, Never>?
@@ -160,6 +184,7 @@ final class AppModel {
         recordManualLayerOverrideIfNeeded(source: source)
         let layerChanged = layer != activeLayer
         if layerChanged {
+            resetLightingBoundary()
             resetJoystickLocalBoundary()
             releaseShortOrLongPressesForLayerChange()
         }
@@ -195,7 +220,7 @@ final class AppModel {
         guard canMutateConfiguration else { return }
         releaseActiveMicrophoneActions()
         configuration.microphoneLayout = layout
-        runtimeRouter = MicroRuntimeRouter(microphoneLayout: layout)
+        configureRuntimeRouter()
         saveConfiguration()
     }
 

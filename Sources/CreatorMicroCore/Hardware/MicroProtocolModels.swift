@@ -3,6 +3,9 @@ import Foundation
 public enum MicroProtocolConstants {
     public static let vendorIdentifier = 0x303A
     public static let productIdentifier = 0x8360
+    public static let creatorMicroProductIdentifiers: Set<Int> = [0x8297, 0x8298]
+    public static let supportedProductIdentifiers: Set<Int> =
+        Set([productIdentifier]).union(creatorMicroProductIdentifiers)
     public static let vendorUsagePage = 0xFF00
     public static let reportIdentifier: UInt8 = 0x06
     public static let dataOpcode: UInt8 = 0x02
@@ -139,6 +142,24 @@ public enum MicroDeviceEvent: Equatable, Sendable {
     case radial(RadialInputEvent)
     case status(DeviceStatus)
     case unhandled(method: String?)
+}
+
+/// Real, observed device identity for the active connection. Carried separately from
+/// `DeviceConnectionState` so adding capability metadata never forces every existing
+/// `connected(transport:status:)` switch to change.
+public struct DeviceIdentitySnapshot: Equatable, Sendable {
+    /// Session-scoped guard: backups cannot be restored to a different connection.
+    public let connectionID: UUID
+    public let transport: MicroTransportKind
+    public let productIdentifier: Int?
+    public let capability: DeviceCapabilityProfile
+
+    public init(transport: MicroTransportKind, productIdentifier: Int?, connectionID: UUID = UUID()) {
+        self.connectionID = connectionID
+        self.transport = transport
+        self.productIdentifier = productIdentifier
+        self.capability = DeviceCapabilityProfile(productIdentifier: productIdentifier)
+    }
 }
 
 public enum DeviceConnectionState: Equatable, Sendable {

@@ -63,6 +63,7 @@ extension AppModel {
     }
 
     func beginReconnect() {
+        resetLightingBoundary()
         guard !isTerminating else { return }
         guard SystemAccessPolicy.canStartDeviceRuntime(with: systemAccess) else {
             reportMissingInputMonitoring()
@@ -88,6 +89,7 @@ extension AppModel {
     }
 
     func stopRuntimeForPermissionLoss() async {
+        resetLightingBoundary()
         let tasks = DeviceRuntimeTasks(model: self)
         isJoystickConnectionVerified = false
         resetJoystickLocalBoundary(restartRadial: false)
@@ -107,6 +109,7 @@ extension AppModel {
     }
 
     func shutdown() async {
+        resetLightingBoundary()
         prepareForTermination()
         let tasks = RuntimeShutdownTasks(model: self)
         tasks.cancelAll()

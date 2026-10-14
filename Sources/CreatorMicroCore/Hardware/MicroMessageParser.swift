@@ -40,10 +40,16 @@ public enum MicroMessageParser {
         guard let method = methodEnvelope.resolvedMethod else {
             return try parseStatusResult(data, decoder: decoder)
         }
+        if let error = try decoder.decode(ErrorEnvelope.self, from: data).error {
+            if error.isEmptyInputResponse, responseIdentifier(data) == nil {
+                return .unhandled(method: "response.error")
+            }
+            throw MicroMessageParserError.deviceError(code: error.code, message: error.message)
+        }
         switch method {
         case "v.oai.hid":
             return .input(try parseInput(data, decoder: decoder))
-        case "v.oai.rad":
+        case "v.oai.rad", "kb.radial":
             return .radial(try parseRadial(data, decoder: decoder))
         case "device.status":
             return .status(try parseStatusPayload(data, decoder: decoder))
@@ -60,7 +66,8 @@ public enum MicroMessageParser {
         guard let parameters = envelope.resolvedParameters else {
             throw MicroMessageParserError.missingParameters(method: "v.oai.hid")
         }
-        guard let control = ControlID(rawValue: parameters.key) else {
+        let nativeControl = ControlID(rawValue: parameters.key)
+        guard let control = nativeControl ?? creatorControl(parameters.key) else {
             throw MicroMessageParserError.unknownControl(parameters.key)
         }
         if let index = parameters.agentIndex,
@@ -68,19 +75,44 @@ public enum MicroMessageParser {
         {
             throw MicroMessageParserError.invalidAgentIndex(index)
         }
+        // AG13/AG14 are Creator's discrete press/release aliases for the encoder, routed onto
+        // the same ControlID as Codex's native continuous-tick ENC_CW/ENC_CC. Only the native
+        // key must always pulse; the alias must respect activity or it fires on both edges.
+        let isCreatorEncoderAlias = nativeControl == nil && control.isEncoderRotation
         return MicroInputEvent(
             control: control,
-            phase: try phase(control: control, activity: parameters.activity),
+            phase: try phase(
+                control: control,
+                activity: parameters.activity,
+                treatAsDiscreteKey: isCreatorEncoderAlias
+            ),
             rawActivity: parameters.activity,
             agentIndex: parameters.agentIndex
         )
     }
 
+    private static func creatorControl(_ key: String) -> ControlID? {
+        switch key {
+        case "AG06": .action6
+        case "AG07": .action7
+        case "AG08": .action8
+        case "AG09": .action9
+        case "AG10": .action10
+        case "AG11": .action11
+        case "AG12": .action12
+        case "AG13": .encoderClockwise
+        case "AG14": .encoderCounterClockwise
+        case "AG15": .encoderPress
+        default: nil
+        }
+    }
+
     private static func phase(
         control: ControlID,
-        activity: Int
+        activity: Int,
+        treatAsDiscreteKey: Bool
     ) throws -> MicroInputPhase {
-        if control.isEncoderRotation {
+        if control.isEncoderRotation && !treatAsDiscreteKey {
             return .pulse
         }
         switch activity {
@@ -103,7 +135,9 @@ public enum MicroMessageParser {
         }
         try validateUnit(parameters.angle, field: "angle")
         try validateUnit(parameters.distance, field: "distance")
-        return RadialInputEvent(angle: parameters.angle, distance: parameters.distance)
+        return RadialInputEvent(
+            angle: parameters.angle,
+            distance: parameters.operation == 0 ? 0 : parameters.distance)
     }
 
     private static func validateUnit(_ value: Double, field: String) throws {
@@ -161,139 +195,5 @@ public enum MicroMessageParser {
             return .unhandled(method: "response")
         }
         throw MicroMessageParserError.missingMethod
-    }
-}
-
-public enum MicroCommandBuilder {
-    public static func deviceStatusRequest(identifier: Int = 1) throws -> Data {
-        try JSONEncoder().encode(
-            StatusRequest(method: "device.status", identifier: identifier)
-        )
-    }
-}
-
-private struct MethodEnvelope: Decodable {
-    let compactMethod: String?
-    let standardMethod: String?
-
-    var resolvedMethod: String? { compactMethod ?? standardMethod }
-
-    enum CodingKeys: String, CodingKey {
-        case compactMethod = "m"
-        case standardMethod = "method"
-    }
-}
-
-private struct ParametersEnvelope<Parameters: Decodable>: Decodable {
-    let compactParameters: Parameters?
-    let standardParameters: Parameters?
-
-    var resolvedParameters: Parameters? {
-        compactParameters ?? standardParameters
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case compactParameters = "p"
-        case standardParameters = "params"
-    }
-}
-
-private struct KeyParameters: Decodable {
-    let key: String
-    let activity: Int
-    let agentIndex: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case key = "k"
-        case activity = "act"
-        case agentIndex = "ag"
-    }
-}
-
-private struct RadialParameters: Decodable {
-    let angle: Double
-    let distance: Double
-
-    enum CodingKeys: String, CodingKey {
-        case angle = "a"
-        case distance = "d"
-    }
-}
-
-private struct StatusResultEnvelope: Decodable {
-    let result: StatusResult?
-    let containsResult: Bool
-    let deviceError: DeviceError?
-    let identifier: Int?
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        containsResult = container.contains(.result)
-        if containsResult, try !container.decodeNil(forKey: .result) {
-            result = try container.decode(StatusResult.self, forKey: .result)
-        } else {
-            result = .acknowledgement
-        }
-        deviceError = try container.decodeIfPresent(DeviceError.self, forKey: .error)
-        identifier = try container.decodeIfPresent(Int.self, forKey: .identifier)
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case error
-        case identifier = "id"
-        case result
-    }
-}
-
-private enum StatusResult: Decodable {
-    case status(DeviceStatus)
-    case acknowledgement
-
-    init(from decoder: Decoder) throws {
-        guard let container = try? decoder.container(keyedBy: StatusCodingKeys.self) else {
-            self = .acknowledgement
-            return
-        }
-        let hasStatusKey = StatusCodingKeys.allCases.contains { container.contains($0) }
-        guard hasStatusKey else {
-            self = .acknowledgement
-            return
-        }
-        self = .status(try DeviceStatus(from: decoder))
-    }
-
-    private enum StatusCodingKeys: String, CodingKey, CaseIterable {
-        case version
-        case profileIndex = "profile_index"
-        case layerIndex = "layer_index"
-        case battery
-        case isCharging = "is_charging"
-    }
-}
-
-private struct DeviceError: Decodable {
-    let code: Int
-    let message: String
-
-    var isEmptyInputResponse: Bool {
-        code == 400 && message == "JSON error - EmptyInput"
-    }
-}
-
-private struct ResponseIdentifierEnvelope: Decodable {
-    let identifier: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case identifier = "id"
-    }
-}
-
-private struct StatusRequest: Encodable {
-    let method: String
-    let identifier: Int
-
-    enum CodingKeys: String, CodingKey {
-        case method = "m"
-        case identifier = "id"
     }
 }

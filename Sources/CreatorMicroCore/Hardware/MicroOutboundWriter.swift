@@ -14,7 +14,8 @@ actor MicroOutboundWriter {
             try await Self.writeFrames(payload, to: transport)
         }
         tail = Task {
-            _ = await operation.result
+            if case .failure(let error) = await operation.result, error is CancellationError { return }
+            try? await Task.sleep(for: .milliseconds(50))
         }
         return operation
     }
@@ -24,7 +25,16 @@ actor MicroOutboundWriter {
         to transport: any MicroTransport
     ) async throws {
         let operation = enqueue(payload, to: transport)
-        try await operation.value
+        try await withTaskCancellationHandler {
+            try await operation.value
+        } onCancel: {
+            operation.cancel()
+        }
+    }
+
+    func drain() async {
+        let pending = tail
+        await pending.value
     }
 
     private nonisolated static func writeFrames(
@@ -33,7 +43,7 @@ actor MicroOutboundWriter {
     ) async throws {
         let frames = MicroReportFramer.frames(for: payload, transport: transport.kind)
         for report in frames {
-            try Task.checkCancellation()
+            // Once started, finish the whole JSON payload; never strand half a message.
             try await transport.write(report)
         }
     }

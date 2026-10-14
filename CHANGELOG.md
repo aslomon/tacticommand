@@ -2,6 +2,26 @@
 
 All notable changes to TactiCommand are documented here.
 
+## [Unreleased]
+
+### Added
+- `DeviceCapabilityProfile` for modeling real hardware lighting capabilities (6-key legacy vs. 13-position Creator).
+- `DeviceIdentitySnapshot` binding real PID-based device identity to coordinator's transport layer (never from name-based inventory).
+- Semantic lighting palette and `FunctionCategory` classifier for action-level default key colors.
+- `LightingPriorityResolver` with failure → observed signal → agent-status → category → off priority chain.
+- `AppModel.deviceIdentity` and `AppModel.capabilityProfile` as the exact UI contract.
+- `AppModel.keyAppearance(for:)` to unify observed audio/dictation signal with agent-status and category-based lighting.
+- Real capability-aware `LightingPayloadBuilder.keyStatus` (13 positions for Creator13, 6-key legacy for unknown/Codex).
+- IOKit transport PID threading via `identitySnapshot` stream in `MicroDeviceCoordinator`.
+
+### Fixed
+- AG13/AG14 encoder-alias double-execution bug: parser now distinguishes native pulse-only rotation from Creator's real press/release alias.
+- Consolidated semantic and agent-status lighting into unified `keyAppearance` contract instead of separate payload branches.
+
+### Changed
+- `AppModelLighting.synchronizeLighting()` now sends unified `keyLightingPayload()` routed by actual device capability.
+- `MicroMessageParser` reduced from 180 to ~155 lines; alias rotation and press/release state properly separated.
+
 ## 0.3.0 - 2026-09-11
 
 - Added ten active software layers for Desktop, Claude Code CLI, Claude App,

@@ -60,6 +60,24 @@ struct KeyActionLiveState: Equatable {
         )
     }
 
+    var appearance: LightingKeyAppearance {
+        let presentation = devicePresentation
+        let color: RGBColor =
+            switch tone {
+            case .failure: SemanticLightingPalette.audioMuted
+            case .ready: SemanticLightingPalette.audioUnmuted
+            case .recording: SemanticLightingPalette.recording
+            case .signal: SemanticLightingPalette.volume
+            case .attention, .unavailable: SemanticLightingPalette.scripts
+            }
+        return LightingKeyAppearance(
+            color: color,
+            brightness: presentation.brightness,
+            effect: presentation.effect,
+            speed: presentation.speed
+        )
+    }
+
     private static func microphoneState(_ state: AudioMuteState) -> KeyActionLiveState {
         switch state {
         case .muted:

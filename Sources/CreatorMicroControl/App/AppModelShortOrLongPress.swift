@@ -92,6 +92,7 @@ extension AppModel {
     }
 
     private func schedule(_ deadline: ShortOrLongPressDeadline) {
+        let generation = lightingGeneration
         longPressTasks[deadline.control]?.cancel()
         longPressTasks[deadline.control] = Task { [weak self] in
             do {
@@ -99,10 +100,12 @@ extension AppModel {
             } catch {
                 return
             }
-            guard let self else { return }
+            guard let self, generation == lightingGeneration else { return }
             longPressTasks[deadline.control] = nil
             let actions = consume(shortOrLongPressState.thresholdReached(deadline))
-            for action in actions { await execute(action) }
+            for action in actions {
+                await execute(action, control: deadline.control, generation: generation)
+            }
         }
     }
 
@@ -116,7 +119,7 @@ extension AppModel {
     }
 
     private func logicalPressControl(for control: ControlID) -> ControlID {
-        guard configuration.microphoneLayout == .linked,
+        guard runtimeRouter.microphoneLayout == .linked,
             control == .action10 || control == .action11
         else {
             return control
@@ -134,7 +137,7 @@ extension AppModel {
         else {
             return false
         }
-        guard configuration.microphoneLayout == .linked,
+        guard runtimeRouter.microphoneLayout == .linked,
             input.control == .action10 || input.control == .action11
         else {
             return true

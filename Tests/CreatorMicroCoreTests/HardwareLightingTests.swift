@@ -40,6 +40,72 @@ final class MicroLightingPayloadTests: XCTestCase {
         )
     }
 
+    func testCapabilityAwareKeyStatusAddressesAllThirteenCreatorPositions() throws {
+        let capability = DeviceCapabilityProfile(productIdentifier: 0x8298)
+        let lights = try (0..<13).map { index in
+            try AgentKeyLighting(index: index, color: .green, validIndices: 0..<13)
+        }
+
+        let payload = try LightingPayloadBuilder.keyStatus(lights, capability: capability)
+        let decoded = try JSONDecoder().decode(AgentStatusMessage.self, from: payload)
+
+        XCTAssertEqual(decoded.method, "v.oai.thstatus")
+        XCTAssertEqual(decoded.params.map(\.identifier), Array(0..<13))
+    }
+
+    func testCapabilityAwareKeyStatusRejectsCountMismatchedToCapability() throws {
+        let codex = DeviceCapabilityProfile(productIdentifier: 0x8360)
+        let thirteenLights = try (0..<13).map { index in
+            try AgentKeyLighting(index: index, color: .green, validIndices: 0..<13)
+        }
+
+        XCTAssertThrowsError(try LightingPayloadBuilder.keyStatus(thirteenLights, capability: codex))
+    }
+
+    func testAgentKeyLightingRejectsIndexOutsideExplicitValidRange() {
+        XCTAssertThrowsError(try AgentKeyLighting(index: 13, color: .red, validIndices: 0..<13))
+    }
+
+    func testCreatorPartialUpdateIncludesOnlyChangedKeys() throws {
+        let creator = DeviceCapabilityProfile(productIdentifier: 0x8298)
+        let lights = try [11, 10].map {
+            try AgentKeyLighting(index: $0, color: .red, validIndices: 0..<13)
+        }
+        let payload = try LightingPayloadBuilder.keyStatusUpdates(lights, capability: creator)
+        let decoded = try JSONDecoder().decode(AgentStatusMessage.self, from: payload)
+        XCTAssertEqual(decoded.params.map(\.identifier), [10, 11])
+    }
+
+    func testPartialUpdateRejectsEmptyDuplicateOutOfRangeAndCodexSubsets() throws {
+        let creator = DeviceCapabilityProfile(productIdentifier: 0x8298)
+        let light = try AgentKeyLighting(index: 0, color: .red)
+        let invalid = try AgentKeyLighting(index: 13, color: .red, validIndices: 0..<20)
+        XCTAssertThrowsError(try LightingPayloadBuilder.keyStatusUpdates([], capability: creator))
+        XCTAssertThrowsError(try LightingPayloadBuilder.keyStatusUpdates([light, light], capability: creator))
+        XCTAssertThrowsError(try LightingPayloadBuilder.keyStatusUpdates([invalid], capability: creator))
+        let codex = DeviceCapabilityProfile(productIdentifier: 0x8360)
+        XCTAssertThrowsError(try LightingPayloadBuilder.keyStatusUpdates([light], capability: codex))
+        let six = try (0..<6).map { try AgentKeyLighting(index: $0, color: .red) }
+        XCTAssertNoThrow(try LightingPayloadBuilder.keyStatusUpdates(six, capability: codex))
+    }
+
+    func testRGBConfigurationRejectsEmptyZonesAndInvalidValues() {
+        XCTAssertThrowsError(try LightingPayloadBuilder.rgbConfiguration(ambient: nil, keys: nil))
+        XCTAssertThrowsError(try ZoneLighting(color: .green, brightness: .nan))
+        XCTAssertThrowsError(try ZoneLighting(color: .green, speed: -0.1))
+        XCTAssertNil(RGBColor(rawValue: -1))
+        XCTAssertNil(RGBColor(rawValue: 0x1000000))
+        XCTAssertEqual(RGBColor(rawValue: 0x00FF00), .green)
+    }
+
+    func testRGBConfigurationCanAddressOnlyKeyZone() throws {
+        let payload = try LightingPayloadBuilder.rgbConfiguration(
+            ambient: nil, keys: ZoneLighting(color: .blue))
+        let decoded = try JSONDecoder().decode(RGBConfigurationMessage.self, from: payload)
+        XCTAssertNil(decoded.params.ambient)
+        XCTAssertEqual(decoded.params.keys?.color, 0x0000FF)
+    }
+
     func testRGBConfigurationUsesMinimizedVendorFields() throws {
         let ambient = try ZoneLighting(
             color: RGBColor(red: 0x11, green: 0x22, blue: 0x33),
@@ -66,8 +132,8 @@ private struct AgentStatusMessage: Decodable {
     let identifier: Int?
 
     enum CodingKeys: String, CodingKey {
-        case method = "m"
-        case params = "p"
+        case method
+        case params
         case identifier = "id"
     }
 }
@@ -87,8 +153,8 @@ private struct RGBConfigurationMessage: Decodable {
     let params: RGBConfigurationParameters
 
     enum CodingKeys: String, CodingKey {
-        case method = "m"
-        case params = "p"
+        case method
+        case params
     }
 }
 

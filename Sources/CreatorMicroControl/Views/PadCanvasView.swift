@@ -53,8 +53,9 @@ struct PadCanvasView: View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
                 DialControl(model: model)
-                MicroKey(control: .agent0, model: model)
-                MicroKey(control: .agent1, model: model)
+                ForEach(topRowAgentControls, id: \.self) { control in
+                    MicroKey(control: control, model: model)
+                }
                 JoystickControl()
             }
             HStack(spacing: 10) {
@@ -78,15 +79,32 @@ struct PadCanvasView: View {
         }
     }
 
+    /// Input geometry comes from the device capability, not an assumed LED wiring order.
+    /// Verified Creator Micro 2 inputs and the historical Codex layout place AG0 left
+    /// of AG1. Saved bindings and firmware lighting slot identifiers stay unchanged.
+    private var topRowAgentControls: [ControlID] {
+        model.capabilityProfile.topRowOrdering == .rightToLeft
+            ? [.agent1, .agent0]
+            : [.agent0, .agent1]
+    }
+
     @ViewBuilder
     private var microphoneControls: some View {
-        switch model.configuration.microphoneLayout {
-        case .linked:
-            MicroKey(control: .action10, model: model, width: 142, labelOverride: "DICTATE")
-        case .separate:
-            HStack(spacing: 6) {
-                MicroKey(control: .action10, model: model, width: 68, labelOverride: "MIC")
-                MicroKey(control: .action11, model: model, width: 68, labelOverride: "APPROVE")
+        if model.capabilityProfile.wideKeyPair != nil {
+            // Creator's microphone switches share one physical wide cap: only action10
+            // is reachable, and its label reflects whatever action is actually bound to
+            // it (never a hardcoded "DICTATE"). action11's saved binding is preserved
+            // untouched for when the same configuration connects to a 6-key device.
+            MicroKey(control: .action10, model: model, width: 142, physicallySharedWith: .action11)
+        } else {
+            switch model.configuration.microphoneLayout {
+            case .linked:
+                MicroKey(control: .action10, model: model, width: 142)
+            case .separate:
+                HStack(spacing: 6) {
+                    MicroKey(control: .action10, model: model, width: 68, labelOverride: "MIC")
+                    MicroKey(control: .action11, model: model, width: 68, labelOverride: "APPROVE")
+                }
             }
         }
     }

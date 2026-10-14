@@ -239,12 +239,15 @@ final class MicroMessageParserTests: XCTestCase {
         XCTAssertThrowsError(try MicroMessageParser.parse(invalidRadial))
     }
 
-    func testBuildsDeviceStatusRequestWithoutParams() throws {
+    func testBuildsStandardDeviceStatusRequestWithNullParams() throws {
         let request = try MicroCommandBuilder.deviceStatusRequest(identifier: 11)
         let decoded = try JSONDecoder().decode(StatusRequest.self, from: request)
 
         XCTAssertEqual(decoded.method, "device.status")
         XCTAssertEqual(decoded.identifier, 11)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: request) as? [String: Any])
+        XCTAssertTrue(object["params"] is NSNull)
+        XCTAssertNil(object["m"])
     }
 
     func testReadsResponseIdentifierOnlyFromCorrelatableReply() {
@@ -262,7 +265,7 @@ private struct StatusRequest: Decodable {
     let identifier: Int
 
     enum CodingKeys: String, CodingKey {
-        case method = "m"
+        case method
         case identifier = "id"
     }
 }

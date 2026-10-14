@@ -62,6 +62,32 @@ final class MicroDeviceCoordinatorShutdownTests: XCTestCase {
         XCTAssertEqual(closeCount, 1)
         XCTAssertEqual(state, .disconnected)
     }
+
+    func testSoftwareStopWaitsForTheStartedPayloadBeforeClosingTransport() async throws {
+        let transport = BlockingCloseTransport()
+        let coordinator = MicroDeviceCoordinator(connector: OneTransportConnector(transport))
+        await coordinator.start()
+        try await transport.waitForWriteCount(1)
+        await transport.injectStatus()
+        try await waitUntilConnected(coordinator)
+        await transport.clearWrites()
+        await transport.blockOutput()
+        let payload = Data(repeating: 0x41, count: 150)
+        let frameCount = MicroReportFramer.frames(for: payload, transport: .usb).count
+        let write = Task { try await coordinator.send(payload: payload) }
+        try await transport.waitForWriteCount(1)
+        let stop = Task { await coordinator.stop() }
+        try await Task.sleep(for: .milliseconds(20))
+        let prematurelyClosed = await transport.hasStartedClose
+        XCTAssertFalse(prematurelyClosed)
+        try await transport.releaseOutput(count: frameCount)
+        try await write.value
+        try await transport.waitUntilCloseStarted()
+        let completed = await transport.writeCount
+        XCTAssertEqual(completed, frameCount)
+        await transport.releaseClose()
+        await stop.value
+    }
 }
 
 private actor OneTransportConnector: MicroTransportConnector {
@@ -87,6 +113,8 @@ private actor BlockingCloseTransport: MicroTransport {
     private var closeStarted = false
     private var closeReleased = false
     private var closeWaiters: [CheckedContinuation<Void, Never>] = []
+    private var blockWrites = false
+    private var writeWaiters: [CheckedContinuation<Void, Never>] = []
 
     init() {
         let stream = AsyncStream<Data>.makeStream()
@@ -95,9 +123,20 @@ private actor BlockingCloseTransport: MicroTransport {
     }
 
     var writeCount: Int { writes.count }
+    var hasStartedClose: Bool { closeStarted }
+
+    func blockOutput() { blockWrites = true }
+
+    func releaseOutput(count: Int) async throws {
+        for _ in 0..<count {
+            try await waitUntil { !writeWaiters.isEmpty }
+            writeWaiters.removeFirst().resume()
+        }
+    }
 
     func write(_ report: Data) async throws {
         writes.append(report)
+        if blockWrites { await withCheckedContinuation { writeWaiters.append($0) } }
     }
 
     func injectStatus() {

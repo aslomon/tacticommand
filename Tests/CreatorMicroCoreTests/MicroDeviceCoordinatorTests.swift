@@ -166,7 +166,7 @@ final class MicroDeviceCoordinatorTests: XCTestCase {
 
 }
 
-private actor QueueTransportConnector: MicroTransportConnector {
+actor QueueTransportConnector: MicroTransportConnector {
     private var transports: [SimulatedMicroTransport]
 
     init(transports: [SimulatedMicroTransport]) {
@@ -181,7 +181,7 @@ private actor QueueTransportConnector: MicroTransportConnector {
     }
 }
 
-private actor UpdateCollector {
+actor UpdateCollector {
     private let stream: AsyncStream<MicroCoordinatorUpdate>
     private var updates: [MicroCoordinatorUpdate] = []
     private var task: Task<Void, Never>?
@@ -262,18 +262,18 @@ private actor UpdateCollector {
     }
 }
 
-private enum TestFailure: Error {
+enum TestFailure: Error {
     case timeout
 }
 
-private func statusPayload(layer: Int, identifier: Int = 1) -> Data {
+func statusPayload(layer: Int, identifier: Int = 1) -> Data {
     Data(
         "{\"result\":{\"version\":\"0.4.1\",\"profile_index\":0,\"layer_index\":\(layer),\"battery\":76,\"is_charging\":false},\"id\":\(identifier)}"
             .utf8
     )
 }
 
-private func waitForWrite(on transport: SimulatedMicroTransport) async throws {
+func waitForWrite(on transport: SimulatedMicroTransport) async throws {
     for _ in 0..<200 {
         if !(await transport.capturedWrites()).isEmpty { return }
         try await Task.sleep(for: .milliseconds(5))

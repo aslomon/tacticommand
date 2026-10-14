@@ -28,6 +28,10 @@ final class IOKitMicroTransport: @unchecked Sendable, MicroTransport {
         context.transportKind ?? .usb
     }
 
+    var productIdentifier: Int? {
+        context.productIdentifier
+    }
+
     var incomingReports: AsyncStream<Data> {
         context.incomingReports
     }
@@ -91,7 +95,7 @@ final class IOKitMicroTransport: @unchecked Sendable, MicroTransport {
 
     private static func configureMatching(_ manager: IOHIDManager) {
         let matching = IOKitMicroMatchingPolicy.creatorMicro.managerCriteria
-        IOHIDManagerSetDeviceMatching(manager, matching as CFDictionary)
+        IOHIDManagerSetDeviceMatchingMultiple(manager, matching as CFArray)
     }
 
     private static func registerCallbacks(

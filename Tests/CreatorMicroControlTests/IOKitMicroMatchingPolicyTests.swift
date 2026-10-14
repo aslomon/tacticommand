@@ -4,13 +4,26 @@ import XCTest
 @testable import CreatorMicroControl
 
 final class IOKitMicroMatchingPolicyTests: XCTestCase {
-    func testManagerCriteriaUseDeviceIdentityWithoutPrimaryCollection() {
+    func testManagerCriteriaIncludeSupportedDeviceIdentitiesWithoutPrimaryCollection() {
         let criteria = IOKitMicroMatchingPolicy.creatorMicro.managerCriteria
 
-        XCTAssertEqual(criteria[kIOHIDVendorIDKey], 0x303A)
-        XCTAssertEqual(criteria[kIOHIDProductIDKey], 0x8360)
-        XCTAssertNil(criteria[kIOHIDDeviceUsagePageKey])
-        XCTAssertNil(criteria[kIOHIDPrimaryUsagePageKey])
+        XCTAssertEqual(criteria.count, 3)
+        XCTAssertTrue(
+            criteria.contains {
+                $0[kIOHIDVendorIDKey] == 0x303A && $0[kIOHIDProductIDKey] == 0x8297
+            })
+        XCTAssertTrue(
+            criteria.contains {
+                $0[kIOHIDVendorIDKey] == 0x303A
+                    && $0[kIOHIDProductIDKey] == 0x8360
+            })
+        XCTAssertTrue(
+            criteria.contains {
+                $0[kIOHIDVendorIDKey] == 0x303A
+                    && $0[kIOHIDProductIDKey] == 0x8298
+            })
+        XCTAssertTrue(criteria.allSatisfy { $0[kIOHIDDeviceUsagePageKey] == nil })
+        XCTAssertTrue(criteria.allSatisfy { $0[kIOHIDPrimaryUsagePageKey] == nil })
     }
 
     func testKeyboardPrimaryDeviceWithVendorCollectionMatches() {
@@ -21,6 +34,25 @@ final class IOKitMicroMatchingPolicyTests: XCTestCase {
         ])
 
         XCTAssertTrue(IOKitMicroMatchingPolicy.creatorMicro.matches(device))
+    }
+
+    func testCreatorMicroVariantMatchesIndependentlyOfTransport() {
+        let device = descriptor(
+            productIdentifier: 0x8298,
+            usagePairs: [
+                HIDUsagePair(page: 0x0001, usage: 0x0006),
+                HIDUsagePair(page: 0xFF00, usage: 0x0001),
+            ])
+
+        XCTAssertTrue(IOKitMicroMatchingPolicy.creatorMicro.matches(device))
+    }
+
+    func testUnsupportedProductVariantIsRejected() {
+        let device = descriptor(
+            productIdentifier: 0x8299,
+            usagePairs: [HIDUsagePair(page: 0xFF00, usage: 0x0001)])
+
+        XCTAssertFalse(IOKitMicroMatchingPolicy.creatorMicro.matches(device))
     }
 
     func testIdentityMatchWithoutVendorCollectionIsRejected() {
@@ -113,10 +145,13 @@ final class IOKitMicroMatchingPolicyTests: XCTestCase {
             ))
     }
 
-    private func descriptor(usagePairs: Set<HIDUsagePair>) -> HIDDeviceDescriptor {
+    private func descriptor(
+        productIdentifier: Int = 0x8360,
+        usagePairs: Set<HIDUsagePair>
+    ) -> HIDDeviceDescriptor {
         HIDDeviceDescriptor(
             vendorIdentifier: 0x303A,
-            productIdentifier: 0x8360,
+            productIdentifier: productIdentifier,
             usagePairs: usagePairs
         )
     }

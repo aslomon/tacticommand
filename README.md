@@ -68,7 +68,8 @@ agent-session names and colors appear only in the separate Agent Focus layer.
 
 | Device | USB | Bluetooth LE | Status |
 | --- | --- | --- | --- |
-| Codex Micro / Creator Micro 2, VID `0x303A`, PID `0x8360` | Implemented | Observed | Primary target |
+| Codex Micro, VID `0x303A`, PID `0x8360` | Implemented | Observed | Existing protocol support; not live-tested in this Creator session |
+| Creator Micro 2, VID `0x303A`, PID `0x8297` / `0x8298` | Verified on `0.6.3` | Status round trip verified on `0.6.3` | Requires vendor key bindings; physical input and LED checks are separate |
 | Other Creator Micro revisions | Unknown | Unknown | Contributions welcome |
 
 macOS owns pairing and discovery for Bluetooth HID devices. TactiCommand lists
@@ -76,9 +77,54 @@ compatible controllers currently available to the app and opens the correct
 Bluetooth Settings surface for nearby or previously paired devices. Once macOS
 connects the controller, TactiCommand detects it automatically.
 
-Only the six Agent keys are individually RGB-addressable. Action keys share a
-firmware backlight zone, so the app never pretends they can show independent
-physical colors.
+Product IDs identify models, not USB versus Bluetooth transports. Only the
+vendor collection (`0xFF00:0x01`) is used for control messages. Older firmware
+that rejects `device.status` is not marked connected; install the official
+firmware for the exact controller model rather than a Codex image on a Creator.
+
+Creator Micro factory keymaps send ordinary keyboard events, not TactiCommand
+control messages. Back up `keymap.json` before configuring a dedicated physical
+layer: bind its 13 keys to `KV_OAI_AG00` through `KV_OAI_AG12`, and the dial's
+clockwise, counter-clockwise, and press slots to `KV_OAI_AG13`, `KV_OAI_AG14`,
+and `KV_OAI_AG15`. Set the joystick to `RADIAL` with no keyboard-bound sectors
+to avoid duplicate host input. Other device layers can retain their bindings.
+These device layers are separate from TactiCommand's software layers.
+
+TactiCommand addresses lighting by the connected model's real capability.
+Creator Micro 2 individually lights all 13 LED positions (its wide
+microphone switch spans two of them); Codex Micro individually lights its six
+Agent keys and uses one shared zone for the rest. Colors always reflect each
+individually addressable key's actual function or live state. Codex's shared
+action zone cannot display a different color for each action key.
+
+Creator lighting feedback sends only changed LED threads between full connection
+snapshots, prioritizing key feedback over ambient changes. This avoids replaying
+all 13 keys for each press. Codex retains its established six-key update contract.
+
+## Firmware keymap setup
+
+TactiCommand can read a connected Creator Micro 2's firmware keymap and, only
+with explicit confirmation, write its own dedicated physical layer:
+
+- Open **Setup Guide** from the configuration header or Device Management.
+- **Inspect / Refresh** reads the active physical layer and its readiness; it
+  never writes anything by itself, and a live connection alone is never shown
+  as success.
+- **Provision** only appears for an unprepared Creator Micro 2. Confirming it
+  names the active physical layer by index and name, states that every other
+  physical layer is preserved, and backs up the complete original keymap
+  before writing.
+- **Restore** needs its own separate confirmation and only works on the exact
+  connection that created the backup. The backup file itself survives an app
+  restart or device reconnect. Within the current app session, its path stays
+  visible and copyable even when restore is unavailable. After restart, backup
+  files remain under `~/Library/Application Support/TactiCommand/Backups`.
+- Codex Micro gets a read-only readiness check and a pointer to its official
+  configurator — TactiCommand never writes Codex firmware. An unrecognized
+  model gets no write controls at all.
+- [Creator Micro firmware v0.6.3 release notes](https://github.com/worklouder/cm-v2-fw-releases/releases/tag/v0.6.3)
+  — scoped to that model only; not a claim that it is the latest release for
+  every device.
 
 ## Install from source
 

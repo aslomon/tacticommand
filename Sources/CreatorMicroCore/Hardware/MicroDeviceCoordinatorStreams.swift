@@ -43,6 +43,19 @@ extension MicroDeviceCoordinator {
         SequencedConnectionUpdate(sequence: connectionStateSequence, state: connectionState)
     }
 
+    public func makeIdentityUpdateStream() -> AsyncStream<DeviceIdentitySnapshot?> {
+        let identifier = UUID()
+        let stream = AsyncStream<DeviceIdentitySnapshot?>.makeStream(
+            bufferingPolicy: .bufferingNewest(1)
+        )
+        identityUpdateContinuations[identifier] = stream.continuation
+        stream.continuation.onTermination = { [weak self] _ in
+            Task { await self?.removeIdentityUpdateContinuation(identifier) }
+        }
+        stream.continuation.yield(identitySnapshot)
+        return stream.stream
+    }
+
     func publish(_ update: MicroCoordinatorUpdate) {
         updateSequence &+= 1
         updateVerifiedConnectionSequence(for: update)
@@ -112,5 +125,9 @@ extension MicroDeviceCoordinator {
 
     private func removeConnectionUpdateContinuation(_ identifier: UUID) {
         connectionUpdateContinuations[identifier] = nil
+    }
+
+    private func removeIdentityUpdateContinuation(_ identifier: UUID) {
+        identityUpdateContinuations[identifier] = nil
     }
 }

@@ -8,6 +8,7 @@ public enum MicroConnectionError: Error, Equatable, LocalizedError {
     case deviceNotFound
     case notConnected
     case statusRoundTripTimedOut
+    case unsupportedStatusMethod
     case transportDisconnected
     case outputReportFailed(code: Int32)
 
@@ -19,6 +20,8 @@ public enum MicroConnectionError: Error, Equatable, LocalizedError {
             "Creator Micro 2 is not connected and verified."
         case .statusRoundTripTimedOut:
             "The device.status round trip timed out."
+        case .unsupportedStatusMethod:
+            "This firmware does not support device.status. Install the official firmware update for your controller."
         case .transportDisconnected:
             "Creator Micro 2 disconnected."
         case .outputReportFailed(let code):
@@ -48,11 +51,16 @@ public actor MicroDeviceCoordinator {
     var updateSequence: UInt64 = 0
     var connectionStateSequence: UInt64 = 0
     var verifiedConnectionSequence: UInt64?
+    public private(set) var identitySnapshot: DeviceIdentitySnapshot?
+    var identityUpdateContinuations: [UUID: AsyncStream<DeviceIdentitySnapshot?>.Continuation] = [:]
     private let outboundWriter = MicroOutboundWriter()
-    private var activeTransport: (any MicroTransport)?
+    var activeTransport: (any MicroTransport)?
     private var worker: Task<Void, Never>?
     private var stopTask: Task<Void, Never>?
-    private var isVerified = false
+    var isVerified = false
+    var pendingRPC: [Int: PendingMicroRPC] = [:]
+    var rpcWriteTasks: [Int: Task<Void, Never>] = [:]
+    var nextRPCIdentifier = 2
 
     public init(
         connector: any MicroTransportConnector,
@@ -82,8 +90,11 @@ public actor MicroDeviceCoordinator {
         worker = nil
         activeTransport = nil
         isVerified = false
+        cancelRPC()
+        setIdentity(nil)
         publish(connection: .disconnected)
         let cleanup = Task {
+            await outboundWriter.drain()
             if let transport { await transport.close() }
             await runningWorker?.value
         }
@@ -129,7 +140,9 @@ public actor MicroDeviceCoordinator {
         do {
             try Task.checkCancellation()
             activeTransport = transport
+            nextRPCIdentifier = 2
             isVerified = false
+            cancelRPC()
             registeredTransport = true
             let reportReader = Task { [weak self] in
                 guard let self else { return }
@@ -140,9 +153,15 @@ public actor MicroDeviceCoordinator {
                 identifier: Self.statusRequestIdentifier
             )
             try await write(request, to: transport)
-            let status = try await roundTrip.wait(timeout: statusTimeout)
+            let status = try await verifiedStatus(roundTrip)
             try Task.checkCancellation()
             isVerified = true
+            setIdentity(
+                DeviceIdentitySnapshot(
+                    transport: transport.kind,
+                    productIdentifier: transport.productIdentifier
+                )
+            )
             publish(connection: .connected(transport: transport.kind, status: status))
             await reportReader.value
             if Task.isCancelled { throw CancellationError() }
@@ -152,9 +171,26 @@ public actor MicroDeviceCoordinator {
             let shouldClose = !registeredTransport || activeTransport != nil
             activeTransport = nil
             isVerified = false
+            cancelRPC()
+            setIdentity(nil)
             if shouldClose { await transport.close() }
             await reader?.value
             throw error
+        }
+    }
+
+    func setIdentity(_ snapshot: DeviceIdentitySnapshot?) {
+        identitySnapshot = snapshot
+        for continuation in identityUpdateContinuations.values {
+            continuation.yield(snapshot)
+        }
+    }
+
+    private func verifiedStatus(_ roundTrip: StatusRoundTrip) async throws -> DeviceStatus {
+        do {
+            return try await roundTrip.wait(timeout: statusTimeout)
+        } catch MicroMessageParserError.deviceError(let code, _) where code == 404 {
+            throw MicroConnectionError.unsupportedStatusMethod
         }
     }
 
@@ -173,6 +209,7 @@ public actor MicroDeviceCoordinator {
     }
 
     private func receive(_ payload: Data, roundTrip: StatusRoundTrip) {
+        if isVerified && receiveRPC(payload) { return }
         do {
             let event = try MicroMessageParser.parse(payload)
             guard isVerified else {
@@ -185,11 +222,18 @@ public actor MicroDeviceCoordinator {
             }
             publish(.event(event))
         } catch {
+            if !isVerified,
+                MicroMessageParser.responseIdentifier(payload) == Self.statusRequestIdentifier,
+                let error = error as? MicroMessageParserError,
+                case .deviceError = error
+            {
+                roundTrip.reject(error)
+            }
             publish(.diagnostic(message(for: error)))
         }
     }
 
-    private func write(
+    func write(
         _ payload: Data,
         to transport: any MicroTransport
     ) async throws {
@@ -207,17 +251,24 @@ public actor MicroDeviceCoordinator {
 }
 
 private final class StatusRoundTrip: @unchecked Sendable {
-    private let statuses: AsyncStream<DeviceStatus>
-    private let continuation: AsyncStream<DeviceStatus>.Continuation
+    private let statuses: AsyncStream<Result<DeviceStatus, MicroMessageParserError>>
+    private let continuation: AsyncStream<Result<DeviceStatus, MicroMessageParserError>>.Continuation
 
     init() {
-        let stream = AsyncStream<DeviceStatus>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        let stream = AsyncStream<Result<DeviceStatus, MicroMessageParserError>>.makeStream(
+            bufferingPolicy: .bufferingOldest(1))
         statuses = stream.stream
         continuation = stream.continuation
     }
 
     func receive(_ status: DeviceStatus) {
-        continuation.yield(status)
+        continuation.yield(.success(status))
+        continuation.finish()
+    }
+
+    func reject(_ error: MicroMessageParserError) {
+        continuation.yield(.failure(error))
+        continuation.finish()
     }
 
     func finish() {
@@ -231,7 +282,7 @@ private final class StatusRoundTrip: @unchecked Sendable {
                 guard let status = await iterator.next() else {
                     throw MicroConnectionError.transportDisconnected
                 }
-                return status
+                return try status.get()
             }
             group.addTask {
                 try await Task.sleep(for: timeout)

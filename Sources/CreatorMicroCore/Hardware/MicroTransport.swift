@@ -2,6 +2,7 @@ import Foundation
 
 public protocol MicroTransport: Sendable {
     var kind: MicroTransportKind { get }
+    var productIdentifier: Int? { get }
     var incomingReports: AsyncStream<Data> { get }
 
     func write(_ report: Data) async throws
@@ -10,17 +11,20 @@ public protocol MicroTransport: Sendable {
 
 extension MicroTransport {
     public func close() async {}
+    public var productIdentifier: Int? { nil }
 }
 
 public actor SimulatedMicroTransport: MicroTransport {
     public nonisolated let kind: MicroTransportKind
+    public nonisolated let productIdentifier: Int?
     public nonisolated let incomingReports: AsyncStream<Data>
 
     private let continuation: AsyncStream<Data>.Continuation
     private var writes: [Data] = []
 
-    public init(kind: MicroTransportKind = .usb) {
+    public init(kind: MicroTransportKind = .usb, productIdentifier: Int? = nil) {
         self.kind = kind
+        self.productIdentifier = productIdentifier
         let stream = AsyncStream<Data>.makeStream()
         incomingReports = stream.stream
         continuation = stream.continuation

@@ -22,6 +22,12 @@ final class IOKitCallbackContext: @unchecked Sendable {
         return connectionState.transportKind
     }
 
+    var productIdentifier: Int? {
+        lock.lock()
+        defer { lock.unlock() }
+        return connectionState.productIdentifier
+    }
+
     private let continuation: AsyncStream<Data>.Continuation
     private let lock = NSLock()
     private let outputLock = NSLock()
@@ -47,7 +53,7 @@ final class IOKitCallbackContext: @unchecked Sendable {
             return
         }
         guard let kind = readTransportKind(device) else { return }
-        connectionState.connect(device, transportKind: kind)
+        connectionState.connect(device, transportKind: kind, productIdentifier: descriptor.productIdentifier)
     }
 
     func disconnect(_ removedDevice: IOHIDDevice) {
@@ -88,8 +94,13 @@ final class IOKitCallbackContext: @unchecked Sendable {
         guard let connection else {
             throw MicroConnectionError.notConnected
         }
-        try validate(report: report, transport: connection.transportKind)
-        let result = report.withUnsafeBytes { rawBuffer in
+        guard
+            let product = IOHIDDeviceGetProperty(
+                connection.device, kIOHIDProductIDKey as CFString) as? NSNumber
+        else { throw MicroConnectionError.notConnected }
+        let output = try IOKitMicroOutputReport.encode(
+            report, transport: connection.transportKind, productIdentifier: product.intValue)
+        let result = output.withUnsafeBytes { rawBuffer in
             guard let address = rawBuffer.bindMemory(to: UInt8.self).baseAddress else {
                 return kIOReturnBadArgument
             }
@@ -98,29 +109,11 @@ final class IOKitCallbackContext: @unchecked Sendable {
                 kIOHIDReportTypeOutput,
                 CFIndex(MicroProtocolConstants.reportIdentifier),
                 address,
-                report.count
+                output.count
             )
         }
         guard result == kIOReturnSuccess else {
             throw MicroConnectionError.outputReportFailed(code: result)
-        }
-    }
-
-    private func validate(report: Data, transport: MicroTransportKind) throws {
-        let expectedLength =
-            transport == .usb
-            ? MicroProtocolConstants.usbReportLength
-            : MicroProtocolConstants.bluetoothReportLength
-        let bytes = [UInt8](report.prefix(3))
-        let hasExpectedPrefix =
-            transport == .usb
-            ? bytes.first == MicroProtocolConstants.dataOpcode
-            : bytes.prefix(2) == [
-                MicroProtocolConstants.reportIdentifier,
-                MicroProtocolConstants.dataOpcode,
-            ]
-        guard report.count == expectedLength, hasExpectedPrefix else {
-            throw MicroConnectionError.outputReportFailed(code: kIOReturnBadArgument)
         }
     }
 
@@ -180,9 +173,11 @@ final class IOKitCallbackContext: @unchecked Sendable {
 struct IOKitConnectionState<Device> {
     private(set) var device: Device?
     private(set) var transportKind: MicroTransportKind?
+    private(set) var productIdentifier: Int?
     private(set) var isCancellationStarted = false
+    private var wasRemoved = false
 
-    var acceptsOperations: Bool { !isCancellationStarted }
+    var acceptsOperations: Bool { !isCancellationStarted && !wasRemoved }
 
     var activeConnection: (device: Device, transportKind: MicroTransportKind)? {
         guard acceptsOperations, let device, let transportKind else { return nil }
@@ -192,11 +187,13 @@ struct IOKitConnectionState<Device> {
     @discardableResult
     mutating func connect(
         _ device: Device,
-        transportKind: MicroTransportKind
+        transportKind: MicroTransportKind,
+        productIdentifier: Int? = nil
     ) -> Bool {
         guard acceptsOperations, self.device == nil else { return false }
         self.device = device
         self.transportKind = transportKind
+        self.productIdentifier = productIdentifier
         return true
     }
 
@@ -208,7 +205,9 @@ struct IOKitConnectionState<Device> {
     mutating func disconnect(where matches: (Device) -> Bool) -> Bool {
         guard let device, matches(device) else { return false }
         self.device = nil
+        wasRemoved = true
         transportKind = nil
+        productIdentifier = nil
         return true
     }
 
@@ -217,6 +216,7 @@ struct IOKitConnectionState<Device> {
         isCancellationStarted = true
         device = nil
         transportKind = nil
+        productIdentifier = nil
         return true
     }
 }
