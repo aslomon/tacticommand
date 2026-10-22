@@ -176,7 +176,7 @@ final class LayerChangeHUDPresenter: LayerChangeHUDPresenting {
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.18
             panel.animator().alphaValue = 0
-        } completionHandler: {
+        } completionHandler: { [weak self, weak panel] in
             Task { @MainActor [weak self, weak panel] in
                 guard let self, let panel,
                     generation == presentationGeneration

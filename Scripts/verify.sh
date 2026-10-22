@@ -43,7 +43,8 @@ expected_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Resources/
     | grep -qx "$expected_build"
 
 echo "==> Bundle architecture and notices"
-lipo "$APP/Contents/MacOS/CreatorMicroControl" -verify_arch arm64 x86_64
+lipo "$APP/Contents/MacOS/CreatorMicroControl" -verify_arch arm64
+lipo "$APP/Contents/MacOS/CreatorMicroControl" -verify_arch x86_64
 [ -f "$APP/Contents/Resources/ThirdPartyNotices/FreeMicro.md" ]
 
 echo "==> App Intents metadata"
